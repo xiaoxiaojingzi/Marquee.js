@@ -1,0 +1,292 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html>
+<head>
+    <title>Marquee.js - a jQuery plugin by Scott Munn</title>
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7/jquery.min.js"></script>
+    <script type="text/javascript" src="marquee.js"></script>
+    
+    <style type="text/css">
+    	#sample_marquee, #sample_marquee .marquee-viewport, #sample_marquee .marquee-panel {
+    		width: 600px; /* You must explicitly state the width for these 3 selectors for any marquee element.  Change the ID to reflect your ID.  It must be the same width for all 3 selectors. */
+    	}
+    	
+    	/*******
+		 * Begin marquee.js library styles 
+		 ******/
+		 
+		.marquee { 
+		/**
+		 * Width must be specified for .marquee.  
+		 * However, DO NOT attach it to this selector.  
+		 * Attach it using something else, like an ID.
+		 **/
+		    overflow:hidden;
+		    position:relative;
+		}
+		
+		.marquee-viewport {
+		/**
+		 * Width must be specified for .marquee-viewport.  
+		 * However, DO NOT attach it to this selector.  
+		 * Attach it using something else, like an ID + .marquee-viewport.  It should be the same value as .marquee's applied width.
+		 **/    
+		 height: auto;
+		 overflow: hidden;
+		}
+		
+		.marquee-panels {
+		    height:auto;
+		    padding:0;
+		    margin:0;
+		    list-style: none;
+		    width:10000px; /* Adjust as needed so that all .marquee-panel elements fit */
+		}
+		
+		.marquee .marquee-panel {
+		    clear: none !important;
+		    float: left !important;
+		}
+		
+		.marquee-nav ol, .marquee-nav ul {
+		    margin:0px !important;
+		    padding:0;
+		    list-style:none;
+		}
+		
+		.marquee-nav li {
+		    cursor:pointer;
+		}
+		
+		.marquee-nav li.current { 
+		    cursor:default;
+		}
+    </style>
+    
+    <!-- All the below styling is unique to this file.  You do not need to copy it to your project. -->
+
+    <style type="text/css">
+    	body {
+    		background: #aaa;
+    	}
+        #wrapper {
+			max-width:960px;
+			padding: 20px 10px;
+			color:#444;
+			margin:0 auto;
+			box-shadow:2px 2px 2px #000;
+			background:#fff;
+			font-family:Palatino,"Palatino Linotype",Helvetica,sans-serif
+		}
+		
+		h1,h6 {
+			text-align:center
+		}
+		
+		a {
+			color:#777;
+			text-decoration:none
+		}
+		
+		a:hover {
+			text-decoration:underline;
+			color:#333
+		}
+		
+		code {
+			background:#eee;
+			border:1px solid #444;
+			color:#000;
+			display:block;
+			padding:15px;
+			margin:15px
+		}
+		
+    	#sample_marquee  .marquee-panel {
+    		background: #bbb;
+    		padding: 20px;
+    	}
+
+    </style>
+</head>
+
+<body>
+	<div id="wrapper">
+	
+	    <h1>Marquee.js</h1>
+	
+	    <h6>A jQuery Plugin by <a href="http://www.scottmunn.com?ref=Marqueejs" target="scott">Scott Munn</a></h6>
+	
+	    <p>Marquee.js is a simple script that remembers form values, states, and selected options across page refreshes and browser sessions. It uses the user's local machine to save their last used value, using HTML5 localStorage, or, if not supported, cookies. See README for more information on customization.  Source is available on <a href="https://github.com/Skotlake/Marquee.js">Github</a>.</p>
+	
+	    <h2>Usage</h2>
+	        <p>Include the necessary files: jQuery, and Marquee.js.  (Please use the latest version of jQuery.)</p>
+	    	<code>
+	    		&lt;script type=&quot;text/javascript&quot; src=&quot;http://ajax.googleapis.com/ajax/libs/jquery/1.7/jquery.min.js&quot;&gt;&lt;/script&gt;<br>
+	            &lt;script type=&quot;text/javascript&quot; src=&quot;Marquee.js&quot;&gt;&lt;/script&gt;
+			</code> 
+			
+			<p>Use the correct HTML structure for a marquee.  Please provide a unique ID for your marquee element.</p>
+			<code>
+&lt;div id="sample_marquee" class="marquee"&gt;<br />
+&nbsp;&nbsp;&lt;div class="marquee-viewport"&gt;<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&lt;ol id="marquee-panels" class="marquee-panels"&gt;<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;li class="marquee-panel"&gt;<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Lorem ipsum<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;/li&gt;<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;li class="marquee-panel"&gt;<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;dolor sit<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;/li&gt;<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;li class="marquee-panel"&gt;<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Consectetur sunt<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;/li&gt;<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&lt;/ol&gt;<br />
+&nbsp;&nbsp;&lt;/div&gt;<br />
+&nbsp;&nbsp;&lt;ol class="controls marquee-nav"&gt;<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&lt;li&gt;&lt;a href="#"&gt;Panel 1&lt;/a&gt;&lt;/li&gt;<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&lt;li&gt;&lt;a href="#"&gt;Panel 2&lt;/a&gt;&lt;/li&gt;<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&lt;li&gt;&lt;a href="#"&gt;Panel 3&lt;/a&gt;&lt;/li&gt;<br />
+&nbsp;&nbsp;&lt;/ol&gt;<br />
+&lt;/div&gt;<br />
+			</code>
+			
+			<p>Use the following CSS to make the Marquee functional.</p>
+			
+			<code>
+/*******<br />
+&nbsp;* Begin marquee.js library styles <br />
+&nbsp;******/<br />
+ <br />
+.marquee { <br />
+/**<br />
+&nbsp;* Width must be specified for .marquee.  <br />
+&nbsp;* However, DO NOT attach it to this selector.  <br />
+&nbsp;* Attach it using something else, like an ID.<br />
+&nbsp;**/<br />
+&nbsp;&nbsp;overflow:hidden;<br />
+&nbsp;&nbsp;position:relative;<br />
+}<br />
+<br />
+.marquee-viewport {<br />
+/**<br />
+&nbsp;* Width must be specified for .marquee-viewport.  <br />
+&nbsp;* However, DO NOT attach it to this selector.  <br />
+&nbsp;* Attach it using something else, like an ID + .marquee-viewport.  It should be the same value as .marquee's applied width.<br />
+&nbsp;**/<br />
+&nbsp;&nbsp;height: auto;<br />
+&nbsp;&nbsp;overflow: hidden;<br />
+}<br />
+<br />
+.marquee-panels {<br />
+&nbsp;&nbsp;height:auto;<br />
+&nbsp;&nbsp;padding:0;<br />
+&nbsp;&nbsp;margin:0;<br />
+&nbsp;&nbsp;list-style: none;<br />
+&nbsp;&nbsp;width:10000px; /* Adjust as needed so that all .marquee-panel elements fit&nbsp;*/<br />
+}<br />
+<br />
+.marquee .marquee-panel {<br />
+&nbsp;&nbsp;clear: none !important;<br />
+&nbsp;&nbsp;float: left !important;<br />
+}
+			</code>
+			
+			<p>Finally, give your .marquee and it's child .marquee-viewport and .marquee-panel elements an identical width.  This allows the content to "switch" but still take up the same space. <strong>You will need to change the ID selector to match the ID selector you choose.</strong></p>
+			
+			<code>
+#sample_marquee, #sample_marquee .marquee-viewport, #sample_marquee .marquee-panel {<br />
+&nbsp;&nbsp;width: 600px; /* Adjust as necessary */<br />
+}
+			</code>
+	
+	    <h2>Try it out!</h2>
+	    
+		<div id="sample_marquee" class="marquee">
+			<div class="marquee-viewport">
+	            <ol id="marquee-panels" class="marquee-panels">
+	                <li class="marquee-panel">
+	                	Lorem ipsum
+	                </li>
+	                <li class="marquee-panel">
+						dolor sit
+	                </li>
+	                <li class="marquee-panel">
+	                	Consectetur sunt
+	                </li>
+	            </ol>
+	        </div>
+	        <ol class="controls marquee-nav">
+				<li><a href="#">Panel 1</a></li>
+				<li><a href="#">Panel 2</a></li>
+				<li><a href="#">Panel 3</a></li>
+			</ol>
+	    </div>
+	    
+	    
+	    <h2>Special Marquees</h2>
+	    
+	    <p>If you want a marquee to autoplay, just add the "autoplay" class to the ".marquee" element.</p>
+	    
+	    <div id="sample_marquee" class="marquee autoplay">
+			<div class="marquee-viewport">
+	            <ol id="marquee-panels" class="marquee-panels">
+	                <li class="marquee-panel">
+	                	Lorem ipsum
+	                </li>
+	                <li class="marquee-panel">
+						dolor sit
+	                </li>
+	                <li class="marquee-panel">
+	                	Consectetur sunt
+	                </li>
+	            </ol>
+	        </div>
+	        <ol class="controls marquee-nav">
+				<li><a href="#">Panel 1</a></li>
+				<li><a href="#">Panel 2</a></li>
+				<li><a href="#">Panel 3</a></li>
+			</ol>
+	    </div>
+	    
+	    <h2>Customizable Options</h2>
+	    
+	    <p>You can customize the behavior of your marquee.  Just pass in an object that overwrites a property name, and then target your marquee before the marquees are called in Marquee.js </p>
+	    
+	    <code>
+	    		var custom_options = [{"hide_transitions":true, "autoplay_duration": 3000}];<br />
+				$("#custom_marquee").marqueeeize(custom_options);
+	    </code>
+	    
+	    <p>The following is a list of the default options.  If you want to customize one, just add that option to your custom marqueeize() call.  You do not need to provide an option in your custom options object if you are not changing it from the default.</p>
+	    
+	    <code>
+var global_marquee_settings = {
+<br />&nbsp;&nbsp;'css_active_name': "current", // string, name of "current" css class<br />&nbsp;&nbsp;
+<br />&nbsp;&nbsp;'fade_text' : true, // bool, fades out/in text when changing panels
+<br />&nbsp;&nbsp;'fade_text_selectors' : "h1,.summary", // jQuery selectors, CSS selectors of text that will fade in/out, fade_text must be true
+<br />&nbsp;&nbsp;'hide_transitions' : false, // bool.  True = "fade" transition.  False = "slide" transition
+<br />&nbsp;&nbsp;'transition_speed': 500, // int, millisecond speed of panel transition
+<br />&nbsp;&nbsp;'marquee_caption' : 'marquee_current_description', // CSS selector of the "marquee's caption".  This will be automatically updated by either finding .caption in the .marquee-nav LI (these will be automatically hidden on load) or by attaching a TITLE attribute to the LI
+<br />&nbsp;&nbsp;'autoplay' : false, // bool, makes slides automatically transition.  
+<br />&nbsp;&nbsp;'autoplay_slide_duration' : 4000, // determines length of slideshow in milliseconds when autoplaying
+<br />&nbsp;&nbsp;'resizable' : true // If true, the .marquee and .marquee-viewport elements will resizable to the exact size of the active .marquee-panel
+<br />};	    
+	    </code>
+	    
+
+	            
+	    <h2>Credits</h2>
+	
+	    <ul>
+	        <li><a href="http://www.scottmunn.com/?ref=Marqueejs" target="scott">Scott Munn</a> - Marquee.js</li>
+	    </ul>
+	    
+	    <h2>Development</h2>
+	    
+	    <ul>
+			<li>Source hosted on <a href="https://github.com/Skotlake/Marquee.js">Github</a>.  Feel free to request a pull.  Please test patches and changes thoroughly across a variety of browsers.  Please create a topic branch for each change you make.</li>          
+			<li>Report issues, questions, feature requests on <a href="https://github.com/Skotlake/Marquee.js/issues">Github Issues</a></li>
+	    </ul>
+	</div>
+</body>
+</html>
