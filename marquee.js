@@ -3,7 +3,7 @@
  * Marquee 
  * An interactive element for displaying information.
  * Code by Scott Munn
- * @version 0.5.1
+ * @version 0.5.2
  *
  * @description Marquee elements, similar to tabs, are able to slide, allowing for animated effects. While tab panels are usually hidden (display:none), marquee panels are hidden in the overflow area, so that while the user does not see them, they are easy to move around for visual effects.
  *
@@ -55,11 +55,11 @@ $.fn.marqueeize = function(options) {
 	    
 	        // Navigation elements
 	        marquee.find(".marquee-nav li").click(function(e){ e.preventDefault(); $(this).marqueeClick();});
-	        marquee.find(".marquee_prev:first").on("click", function(e){ e.preventDefault();$(this).parents(".marquee").first().marqueeGoTo("prev");});
-	        marquee.find(".marquee_next:first").on("click", function(e){ e.preventDefault();$(this).parents(".marquee").first().marqueeGoTo("next");});
-	        marquee.find(".marquee_first:first").on("click", function(e){ e.preventDefault();$(this).parents(".marquee").first().marqueeGoTo("first");});
-	        marquee.find(".marquee_last:first").on("click", function(e){ e.preventDefault();$(this).parents(".marquee").first().marqueeGoTo("last");});
-	        marquee.find(".marquee_random:first").on("click", function(e){ e.preventDefault();$(this).parents(".marquee").first().marqueeGoTo("random");});
+	        marquee.find(".marquee_prev").first().on("click", function(e){ e.preventDefault();$(this).parents(".marquee").first().marqueeGoTo("prev");});
+	        marquee.find(".marquee_next").first().on("click", function(e){ e.preventDefault();$(this).parents(".marquee").first().marqueeGoTo("next");});
+	        marquee.find(".marquee_first").first().on("click", function(e){ e.preventDefault();$(this).parents(".marquee").first().marqueeGoTo("first");});
+	        marquee.find(".marquee_last").first().on("click", function(e){ e.preventDefault();$(this).parents(".marquee").first().marqueeGoTo("last");});
+	        marquee.find(".marquee_random").first().on("click", function(e){ e.preventDefault();$(this).parents(".marquee").first().marqueeGoTo("random");});
 	    
 	        if (options) { $.extend(settings,options); } // Merge provided options with defaults
 	        
@@ -70,7 +70,7 @@ $.fn.marqueeize = function(options) {
 	            	index = 0;
 
 		        // Check whether the current CSS name is applied to a panel
-	            var current = marquee_instance.find(".marquee-nav:first").find("."+settings.css_active_name); // If the "current" class is on one of the panels, auto-select it
+	            var current = marquee_instance.find(".marquee-nav").first().find("."+settings.css_active_name); // If the "current" class is on one of the panels, auto-select it
 	            if (current.length > 0) { // Go to the pre-selected "current" panel
 	                index = current.index();
 	            } else { // Go to the first panel
@@ -87,7 +87,7 @@ $.fn.marqueeize = function(options) {
 	                marquee_instance.marqueeGoTo(index);    
 	            }
 	
-	            var total = marquee_instance.find(".marquee-panels:first").children(".marquee-panel").length; // Used by infinite rotation
+	            var total = marquee_instance.find(".marquee-panels").first().children(".marquee-panel").length; // Used by infinite rotation
 	            marquee_instance.attr("data-original-length", total);	// Used by infinite rotation
 	            
 	            if (marquee_instance.find(".counter .total").length > 0) { marquee_instance.find(".counter .total").html(total);  } // Update the counter (1 of 6) if it exists
@@ -187,10 +187,12 @@ $.fn.marqueeGoTo = function(index,force_panel) {
     var instance = $(this); 
 
     return this.each(function(){
-        var marquee = this,
-            current_index = $(marquee).find(".marquee-panels:first").find("."+settings.css_active_name).index(),
-            total_index = $(marquee).find(".marquee-panels:first").children(".marquee-panel").length - 1;
+        var marquee = $(this),
+            current_index = marquee.find(".marquee-panels").first().children("."+settings.css_active_name).index(),
+            total_index = marquee.find(".marquee-panels").first().children(".marquee-panel").length - 1;
         if (current_index == -1) { current_index = 0; } // -1 is given when none exists
+        
+        console.log(marquee.find(".marquee-panels").first().find("."+settings.css_active_name));
 
         // Parse the index value    
         switch(index) {
@@ -226,11 +228,13 @@ $.fn.marqueeGoTo = function(index,force_panel) {
             break;
         }
         
+        console.log(index);
+        
 	// Handles looping the marquee.
         // If the "infinite" class is applied to the marquee, the LI elements will be cloned so that it appears the carousel always continues in one direction.
         // However, this currently only goes forward -- if looping backward from the first, it will loop all the way back.
-        if ($(marquee).hasClass("infinite") == true) {
-            var panels_container = $(marquee).find(".marquee-panels:first"),
+        if (marquee.hasClass("infinite") == true) {
+            var panels_container = marquee.find(".marquee-panels").first(),
             	panels = $(panels_container).children(".marquee-panel"),
             	container_width = panels_container.width();
             	
@@ -256,17 +260,19 @@ $.fn.marqueeGoTo = function(index,force_panel) {
             if (index > total_index) { index = 0;} // Fix values that are too high
         }
         
+
+        
     // Ends looping marquee
     
     // Actually make the move
     	if (force_panel != null) { index = force_panel; }
 
         if (current_index != index) { // Only do the transition if we want a different panel
-			marquee = $(marquee);
-            var container = marquee.find(".marquee-panels:first"), // This element holds the panels
-            	viewport = marquee.find(".marquee-viewport:first"),
-            	nav = marquee.find(".marquee-nav:first"),
-            	panel = marquee.find(".marquee-panels:first").find(".marquee-panel:eq("+index+")"), // Get the panel that matches this numeric value
+
+            var container = marquee.find(".marquee-panels").first(), // This element holds the panels
+            	viewport = marquee.find(".marquee-viewport").first(),
+            	nav = marquee.find(".marquee-nav").first(),
+            	panel = marquee.find(".marquee-panels").first().find(".marquee-panel:eq("+index+")"), // Get the panel that matches this numeric value
                 panel_height = panel.outerHeight(), // Get the height of this panel
                 coordinates = panel.position(), // Get the coordinates of this panel
                 margin = container.css("margin-left").replace('px',''), // Figure out the margin of the panel container
@@ -280,7 +286,7 @@ $.fn.marqueeGoTo = function(index,force_panel) {
             nav.find("."+settings.css_active_name).removeClass(settings.css_active_name); // Remove current from direct nav
             nav.find("li:eq("+index+")").addClass(settings.css_active_name); // Give new current item the current class
             
-            marquee.find(".marquee-panels:first").children("."+settings.css_active_name).removeClass(settings.css_active_name); // Remove current from direct nav            
+            marquee.find(".marquee-panels").first().children("."+settings.css_active_name).removeClass(settings.css_active_name); // Remove current from direct nav            
             panel.addClass(settings.css_active_name);  // Give new current panel the current class
             
             marquee.find(".counter .index").html(parseInt(index)+1); // Update a counter (1 of 6) if it exists
@@ -478,4 +484,7 @@ $(function(){
  * - Improved performance of autoplaying marquees.
  * - Improved dynamic height resizing
  * - Fixes a bug where sub-marquees did not keep their '.current' designations when the parent marquee was clicked
+ *
+ * 0.5.2
+ * - Fixes a bug where a sub-marquee could confuse it's parent marquee when autoplaying and using the parents next/previous buttons
  **/ 
