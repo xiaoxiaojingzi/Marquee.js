@@ -3,7 +3,7 @@
  * Marquee 
  * An interactive element for displaying information.
  * Code by Scott Munn
- * @version 0.5.2
+ * @version 0.5.3
  *
  * @description Marquee elements, similar to tabs, are able to slide, allowing for animated effects. While tab panels are usually hidden (display:none), marquee panels are hidden in the overflow area, so that while the user does not see them, they are easy to move around for visual effects.
  *
@@ -192,7 +192,6 @@ $.fn.marqueeGoTo = function(index,force_panel) {
             total_index = marquee.find(".marquee-panels").first().children(".marquee-panel").length - 1;
         if (current_index == -1) { current_index = 0; } // -1 is given when none exists
         
-        console.log(marquee.find(".marquee-panels").first().find("."+settings.css_active_name));
 
         // Parse the index value    
         switch(index) {
@@ -228,7 +227,6 @@ $.fn.marqueeGoTo = function(index,force_panel) {
             break;
         }
         
-        console.log(index);
         
 	// Handles looping the marquee.
         // If the "infinite" class is applied to the marquee, the LI elements will be cloned so that it appears the carousel always continues in one direction.
@@ -310,11 +308,13 @@ $.fn.marqueeGoTo = function(index,force_panel) {
 
             if ((settings.hide_transitions && current_index != -1) || temp_hide_trans == true) {
            		// Do the transition instantly -- don't make it visible to user
+           		
+
                 var fadeable = marquee.find("h1,.summary");
                 if (fadeable.length > 0) {
                 	// Run this if there are fadeable inline elements
 	                fadeable.fadeTo(10,0, function(){
-	                    container.animate({"margin-left": travelTo}, 1000, "swing", function(){
+	                    container.css({"margin-left": travelTo}, 1000, "swing", function(){
 	                        fadeable.fadeTo(10,1);
                         	if (settings.resizable == true) { 
 			                	viewport.css({"height": panel_height+"px"}); 
@@ -323,7 +323,9 @@ $.fn.marqueeGoTo = function(index,force_panel) {
 	                    });
 	                });                 
                 } else {
-                    container.animate({"margin-left": travelTo}, 1000, "swing", function(){
+                
+
+                    container.css({"margin-left": travelTo}, 1000, "swing", function(){
                         fadeable.fadeTo(10,1);
                        	// Run this if there are not fadeable inline elements
 						if (settings.resizable == true) { 
@@ -336,6 +338,7 @@ $.fn.marqueeGoTo = function(index,force_panel) {
 			// Do the transition visibly            
                 if (settings.fade_text) { text.fadeTo(400,.1); } // Fade out the text
                 if ($(marquee).hasClass("fast") == true) { settings.transition_speed = 1;} 
+                
 
 				container.animate({"margin-left": travelTo}, settings.transition_speed, "swing", function () {
 					if (settings.resizable == true && panel_height != viewport.height()) { 
@@ -486,5 +489,8 @@ $(function(){
  * - Fixes a bug where sub-marquees did not keep their '.current' designations when the parent marquee was clicked
  *
  * 0.5.2
- * - Fixes a bug where a sub-marquee could confuse it's parent marquee when autoplaying and using the parents next/previous buttons
+ * - Fixes a bug where a sub-marquee could confuse its parent marquee when autoplaying and using the parents next/previous buttons
+ *
+ * 0.5.3
+ * - Fixes a bug where hide_transition was not always followed.
  **/ 
