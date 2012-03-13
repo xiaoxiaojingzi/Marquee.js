@@ -3,7 +3,7 @@
  * Marquee 
  * An interactive element for displaying information.
  * Code by Scott Munn
- * @version 0.5.3
+ * @version 0.5.4
  *
  * @description Marquee elements, similar to tabs, are able to slide, allowing for animated effects. While tab panels are usually hidden (display:none), marquee panels are hidden in the overflow area, so that while the user does not see them, they are easy to move around for visual effects.
  *
@@ -200,6 +200,7 @@ $.fn.marqueeGoTo = function(index,force_panel) {
                 index = 0;
                 settings.fade_text = false;
                 var temp_hide_trans = true;
+                var fix_height = true;
             break;
         
             case "next":
@@ -360,6 +361,17 @@ $.fn.marqueeGoTo = function(index,force_panel) {
         } else {
             $("#current_slide").text((index+1) + "/" + (total_index+1)); // changes label for current slide (ie, "1 of 3") 
         }
+        
+        if (fix_height == true) {
+        	if (settings.hide_transitions) {
+	        	viewport.css({"height": panel_height+"px"}); 
+	        	container.css({"height": panel_height+"px"});        	
+        	} else {
+	            viewport.animate({"height": panel_height+"px"}, (settings.transition_speed/2)); 
+		    	container.animate({"height": panel_height+"px"}, (settings.transition_speed/2));
+        	
+        	}
+        }
     });
 }
 
@@ -493,4 +505,7 @@ $(function(){
  *
  * 0.5.3
  * - Fixes a bug where hide_transition was not always followed.
+ *
+ * 0.5.4
+ * - Ensures that the height is always set correctly on page load if the marquee can auto-resize
  **/ 
