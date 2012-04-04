@@ -3,7 +3,7 @@
  * Marquee 
  * An interactive element for displaying information.
  * Code by Scott Munn
- * @version 0.5.4
+ * @version 0.6
  *
  * @description Marquee elements, similar to tabs, are able to slide, allowing for animated effects. While tab panels are usually hidden (display:none), marquee panels are hidden in the overflow area, so that while the user does not see them, they are easy to move around for visual effects.
  *
@@ -22,14 +22,27 @@ var global_marquee_settings = {
     'marquee_caption' : 'marquee_current_description', // CSS selector of the "marquee's caption".  This will be automatically updated by either finding .caption in the .marquee-nav LI (these will be automatically hidden on load) or by attaching a TITLE attribute to the LI
     'autoplay' : false, // bool, makes slides automatically transition.  
     'autoplay_slide_duration' : 4000, // determines length of slideshow in milliseconds when autoplaying
-    'resizable' : true // If true, the .marquee and .marquee-viewport elements will resizable to the exact size of the active .marquee-panel
+    'resizable' : true, // If true, the .marquee and .marquee-viewport elements will resizable to the exact size of the active .marquee-panel
+    'touchstartevent' : ('ontouchstart' in document.documentElement) ? 'touchstart' : 'mousedown',	// Auto-detects touch event.  Set to one or the other to disable the remainder
+	'touchendevent' : ('ontouchstart' in document.documentElement) ? 'touchend'   : 'mouseup', // Auto-detects touch event.  Set to one or the other to disable the remainder
+	"enableTouch": true, // Determines whether to allow swiping	
+	"swipeThreshold":30 // Minimum pixel threshold to activate a swipe
 };
+
+function printObject(o) {
+  var out = '';
+  for (var p in o) {
+    out += p + ': ' + o[p] + '\n';
+  }
+  alert(out);
+}
 
 /**
  * @function marqueeize(options)
  *
  * Initializes marquee elements
  **/
+ 
 
 $.fn.marqueeize = function(options) {
 	var settings = global_marquee_settings;
@@ -51,6 +64,8 @@ $.fn.marqueeize = function(options) {
         if (marquee.hasClass("fixed")) { settings.resizable = false; }
 		if (marquee.hasClass("hasBeenMarqueed")) { /*console.log("The following marquee has already received instruction and will not receive further instruction."); console.log(marquee); */}
 		else {
+	        if (options) { $.extend(settings,options); } // Merge provided options with defaults
+
 			marquee.addClass("hasBeenMarqueed");
 	    
 	        // Navigation elements
@@ -60,8 +75,52 @@ $.fn.marqueeize = function(options) {
 	        marquee.find(".marquee_first").first().on("click", function(e){ e.preventDefault();$(this).parents(".marquee").first().marqueeGoTo("first");});
 	        marquee.find(".marquee_last").first().on("click", function(e){ e.preventDefault();$(this).parents(".marquee").first().marqueeGoTo("last");});
 	        marquee.find(".marquee_random").first().on("click", function(e){ e.preventDefault();$(this).parents(".marquee").first().marqueeGoTo("random");});
+
+			// Touch event navigation
+			if (settings.enableTouch) {
+		        marquee.on(settings.touchstartevent,function(e){
+					if (settings.touchstartevent == "mousedown") { e.preventDefault(); /* Prevents highlight or grabbing elements on desktop browsers */ }
+					var x = (e.pageX) ? e.pageX : e.originalEvent.changedTouches[0].pageX,
+						y = (e.pageY) ? e.pageY : e.originalEvent.changedTouches[0].pageY;
+					$(this).data({"start_x":x,"start_y":y});
+		        });
+		        
+		        marquee.on(settings.touchendevent,function(e){	
+		        	var x_swipe, y_swipe;
+		        
+		        	var x = (e.pageX) ? e.pageX : e.originalEvent.changedTouches[0].pageX,
+						y = (e.pageY) ? e.pageY : e.originalEvent.changedTouches[0].pageY;
+					$(this).data("end_x", x);
+					$(this).data("end_y", y);
+
+					var x_change = $(this).data("start_x") - $(this).data("end_x"),
+						y_change = $(this).data("start_y") - $(this).data("end_y");
+
+		        	if (x_change < 0) { x_swipe = "left"; }
+		        	else if (x_change > 0) { x_swipe = "right"; }
+		        	
+		        	if (y_change < 0) { y_swipe = "up"; }
+		        	else if (y_change > 0) { y_swipe = "down"; }
+
+       				if (x_swipe == "left" && Math.abs(x_change) > settings.swipeThreshold) { 
+       					if ($(this).find(".marquee-panel." + settings.css_active_name).index() != 0) { $(this).marqueeGoTo("prev"); }
+       					else { // Bounce effect
+       						var orig = $(this).find(".marquee-panels").css("margin-left").replace("px","");
+       						$(this).find(".marquee-panels").animate({"margin-left":(orig + 40)}, 200).animate({"margin-left":(orig)}, 400, (jQuery.easing['easeOutBounce']) ? "easeOutBounce" : "swing"); }
+       				} else if (x_swipe == "right" && Math.abs(x_change) > settings.swipeThreshold) { 
+       					if ($(this).find(".marquee-panel." + settings.css_active_name).index() != ($(this).attr("data-original-length") - 1)) { $(this).marqueeGoTo("next"); }
+       					else { // Bounce effect
+       						var orig = $(this).find(".marquee-panels").css("margin-left").replace("px","");
+       						$(this).find(".marquee-panels").animate({"margin-left":(orig - 40)}, 200).animate({"margin-left":(orig)}, 400, (jQuery.easing['easeOutBounce']) ? "easeOutBounce" : "swing"); }
+       				}
+       				
+       				$(this).data({"start_x":null,"start_y":null,"end_x":null,"end_y": null});
+ 	        	});
+ 	        	
+ 	        }
+ 	        // End Touch Event Navigation
+ 	        
 	    
-	        if (options) { $.extend(settings,options); } // Merge provided options with defaults
 	        
 	        marquee.find(".marquee-nav .caption").hide(); // Hide all the captions in the list items so as to not break the lists/navigation
 	        
@@ -508,4 +567,7 @@ $(function(){
  *
  * 0.5.4
  * - Ensures that the height is always set correctly on page load if the marquee can auto-resize
+ *
+ * 0.6
+ * - Adds swipe support: left / right.  Tested on Android and iOS5.  Uses mouseup/mousedown for desktop swiping.  Set enableTouch setting to true to enable, and set swipeThreshold if needed.  Can also customize touchstartevent and touchendevent variables if only one type (mousedown or touch) is desired.  By default, it maps to both.
  **/ 
