@@ -29,14 +29,6 @@ var global_marquee_settings = {
 	"swipeThreshold":30 // Minimum pixel threshold to activate a swipe
 };
 
-function printObject(o) {
-  var out = '';
-  for (var p in o) {
-    out += p + ': ' + o[p] + '\n';
-  }
-  alert(out);
-}
-
 /**
  * @function marqueeize(options)
  *
@@ -86,15 +78,12 @@ $.fn.marqueeize = function(options) {
 		        });
 		        
 		        marquee.on(settings.touchendevent,function(e){	
-		        	var x_swipe, y_swipe;
-		        
-		        	var x = (e.pageX) ? e.pageX : e.originalEvent.changedTouches[0].pageX,
+		        	var x_swipe, y_swipe,
+		        		x = (e.pageX) ? e.pageX : e.originalEvent.changedTouches[0].pageX,
 						y = (e.pageY) ? e.pageY : e.originalEvent.changedTouches[0].pageY;
-					$(this).data("end_x", x);
-					$(this).data("end_y", y);
 
-					var x_change = $(this).data("start_x") - $(this).data("end_x"),
-						y_change = $(this).data("start_y") - $(this).data("end_y");
+					var x_change = $(this).data("start_x") - x,
+						y_change = $(this).data("start_y") - y;
 
 		        	if (x_change < 0) { x_swipe = "left"; }
 		        	else if (x_change > 0) { x_swipe = "right"; }
@@ -102,19 +91,21 @@ $.fn.marqueeize = function(options) {
 		        	if (y_change < 0) { y_swipe = "up"; }
 		        	else if (y_change > 0) { y_swipe = "down"; }
 
-       				if (x_swipe == "left" && Math.abs(x_change) > settings.swipeThreshold) { 
-       					if ($(this).find(".marquee-panel." + settings.css_active_name).index() != 0) { $(this).marqueeGoTo("prev"); }
-       					else { // Bounce effect
-       						var orig = $(this).find(".marquee-panels").css("margin-left").replace("px","");
-       						$(this).find(".marquee-panels").animate({"margin-left":(orig + 40)}, 200).animate({"margin-left":(orig)}, 400, (jQuery.easing['easeOutBounce']) ? "easeOutBounce" : "swing"); }
-       				} else if (x_swipe == "right" && Math.abs(x_change) > settings.swipeThreshold) { 
-       					if ($(this).find(".marquee-panel." + settings.css_active_name).index() != ($(this).attr("data-original-length") - 1)) { $(this).marqueeGoTo("next"); }
-       					else { // Bounce effect
-       						var orig = $(this).find(".marquee-panels").css("margin-left").replace("px","");
-       						$(this).find(".marquee-panels").animate({"margin-left":(orig - 40)}, 200).animate({"margin-left":(orig)}, 400, (jQuery.easing['easeOutBounce']) ? "easeOutBounce" : "swing"); }
-       				}
-       				
-       				$(this).data({"start_x":null,"start_y":null,"end_x":null,"end_y": null});
+					if (x_change > y_change) { // Ensures only swipes intended to be horizontal are registered
+	       				if (x_swipe == "left" && Math.abs(x_change) > settings.swipeThreshold) { 
+	       					if ($(this).find(".marquee-panel." + settings.css_active_name).index() != 0) { $(this).marqueeGoTo("prev"); }
+	       					else { // Bounce effect
+	       						var orig = $(this).find(".marquee-panels").css("margin-left").replace("px","");
+	       						$(this).find(".marquee-panels").animate({"margin-left":(orig + 40)}, 200).animate({"margin-left":(orig)}, 400, (jQuery.easing['easeOutBounce']) ? "easeOutBounce" : "swing"); }
+	       				} else if (x_swipe == "right" && Math.abs(x_change) > settings.swipeThreshold) { 
+	       					if ($(this).find(".marquee-panel." + settings.css_active_name).index() != ($(this).attr("data-original-length") - 1)) { $(this).marqueeGoTo("next"); }
+	       					else { // Bounce effect
+	       						var orig = $(this).find(".marquee-panels").css("margin-left").replace("px","");
+	       						$(this).find(".marquee-panels").animate({"margin-left":(orig - 40)}, 200).animate({"margin-left":(orig)}, 400, (jQuery.easing['easeOutBounce']) ? "easeOutBounce" : "swing"); }
+	       				}
+					}
+
+       				$(this).data({"start_x":null,"end_x":null});
  	        	});
  	        	
  	        }
@@ -164,10 +155,10 @@ $.fn.marqueeize = function(options) {
 *** HTML Structure - Marquee Element ****
  ** .marquee
  *** .marquee-panels
- **** li
+ **** .marquee-panel
 *** HTML Structure - Nav Element ***
  ** .marquee-nav
- *** li
+ *** li 
  *
 *** CSS Notes ****
  ** Both the panel and the nav LI item will get ".current" when active
@@ -204,7 +195,6 @@ $.fn.marqueeAutoplay = function() {
 	
 		marquee_instance.find(".marquee-nav").click(function() { marquee_instance.data('autoplay', false); }); // Stops autoplay on click of slide number
 
-
         $(this).marqueeAutoplayEnable();    
         // $(document.createElement("a")).appendTo(this).addClass("pause").html("pause");  
     });
@@ -228,9 +218,7 @@ $.fn.marqueeAutoplayEnable = function () {
                 if (!marquee.data('hover') && marquee.data('autoplay')) { marquee.marqueeGoTo("next"); }
             },global_marquee_settings.autoplay_slide_duration);
         }
-    );
-
-    marquee.removeClass("autoplay-off").addClass("autoplay-on");
+    ).("autoplay-off").addClass("autoplay-on");
 }
 
 /**
@@ -522,30 +510,22 @@ $(function(){
  * - Added "infinite" carousel option, where instead of revolving backwards, the carousel will appear to loop forever.  limitation: going backwards on the first panel does not animate flawlessly.  therefore, looping backward from the first will use a fade for a more graceful transition.
  * - Changed the way the counter is updated to account for this new carousel type.  A data-original-length attribute is attached to the marquee with the number of the original elements in the marquee.
  *
- * 0.4.6
- * - Changed "hide transition" speed from 150ms to 10ms
- * - Optimizing marquee.css to be more library-like
+
+ * 0.6
+ * - Adds swipe support: left / right.  Tested on Android and iOS5.  Uses mouseup/mousedown for desktop swiping.  Set enableTouch setting to true to enable, and set swipeThreshold if needed.  Can also customize touchstartevent and touchendevent variables if only one type (mousedown or touch) is desired.  By default, it maps to both.
+ * 0.5.4
+ * - Ensures that the height is always set correctly on page load if the marquee can auto-resize
  *
- * 0.4.6.1
- * - Added a default option where the marquee and the viewport will automatically resize based on the size of the current panel.  To disable this, add a "fixed" class to the .marquee element, or change initialization options.
+ * 0.5.3
+ * - Fixes a bug where hide_transition was not always followed.
  *
- * 0.4.6.2
- * - Fixed a bug where the first panel would not auto-size on initialization
- * 
- * 0.4.6.3
- * - Fixed a bug with initialization and conflicting 'current' classes
- * - Fixed a bug where tabs with an initial tab based on the url HASH would not function properly
+ * 0.5.2
+ * - Fixes a bug where a sub-marquee could confuse its parent marquee when autoplaying and using the parents next/previous buttons
  *
- * 0.4.6.4
- * - Bug fixes
- *
- * 0.4.6.5
- * - Brings back auto height, might need more testing in IE.
- *
- * 0.4.7
- * - Speeds up height resizing, and only runs it when needed.  Before, it was attempting to change the height each time.  When the height does need to change, it'll do it in 1/10th the time of the designated transition speed.  Before, it was using the same value, causing any panels where the height must change to take twice as long to load.
- * - Fixes a bug where custom options weren't always followed
- * - Better assignment of the marqueeize function.  When a marquee receives the marqueeize method, it receive a class of "hasBeenMarqueed."  The marqueeize function checks for this class, and if a marquee already has it, the marqueeize function will not be assigned to it.  This makes it easier to target specific marquees and give them custom options.
+ * 0.5.1
+ * - Improved performance of autoplaying marquees.
+ * - Improved dynamic height resizing
+ * - Fixes a bug where sub-marquees did not keep their '.current' designations when the parent marquee was clicked
  *
  * 0.4.7.1
  * - Fixes a bug where total number of panels can be miscalculated
@@ -554,20 +534,28 @@ $(function(){
  * - Adds support for marquees within marquees, allowing an infinite number of marquees to be used
  * - Rewrite of most event selectors and assignments to "sandbox" marquees to only effect their direct content
  *
- * 0.5.1
- * - Improved performance of autoplaying marquees.
- * - Improved dynamic height resizing
- * - Fixes a bug where sub-marquees did not keep their '.current' designations when the parent marquee was clicked
+ * 0.4.7
+ * - Speeds up height resizing, and only runs it when needed.  Before, it was attempting to change the height each time.  When the height does need to change, it'll do it in 1/10th the time of the designated transition speed.  Before, it was using the same value, causing any panels where the height must change to take twice as long to load.
+ * - Fixes a bug where custom options weren't always followed
+ * - Better assignment of the marqueeize function.  When a marquee receives the marqueeize method, it receive a class of "hasBeenMarqueed."  The marqueeize function checks for this class, and if a marquee already has it, the marqueeize function will not be assigned to it.  This makes it easier to target specific marquees and give them custom options.
  *
- * 0.5.2
- * - Fixes a bug where a sub-marquee could confuse its parent marquee when autoplaying and using the parents next/previous buttons
+ * 0.4.6.5
+ * - Brings back auto height, might need more testing in IE.
  *
- * 0.5.3
- * - Fixes a bug where hide_transition was not always followed.
+ * 0.4.6.4
+ * - Bug fixes
  *
- * 0.5.4
- * - Ensures that the height is always set correctly on page load if the marquee can auto-resize
+ * 0.4.6.3
+ * - Fixed a bug with initialization and conflicting 'current' classes
+ * - Fixed a bug where tabs with an initial tab based on the url HASH would not function properly
  *
- * 0.6
- * - Adds swipe support: left / right.  Tested on Android and iOS5.  Uses mouseup/mousedown for desktop swiping.  Set enableTouch setting to true to enable, and set swipeThreshold if needed.  Can also customize touchstartevent and touchendevent variables if only one type (mousedown or touch) is desired.  By default, it maps to both.
- **/ 
+ * 0.4.6.2
+ * - Fixed a bug where the first panel would not auto-size on initialization
+ * 
+ * 0.4.6.1
+ * - Added a default option where the marquee and the viewport will automatically resize based on the size of the current panel.  To disable this, add a "fixed" class to the .marquee element, or change initialization options.
+ *
+ * 0.4.6
+ * - Changed "hide transition" speed from 150ms to 10ms
+ * - Optimizing marquee.css to be more library-like
+ *
