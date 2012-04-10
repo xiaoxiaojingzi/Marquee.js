@@ -2,7 +2,7 @@
 
 A jQuery Plugin by Scott Munn
 
-Marquee.js is a simple script that remembers form values, states, and selected options across page refreshes and browser sessions. It uses the user's local machine to save their last used value, using HTML5 localStorage, or, if not supported, cookies. See README for more information on customization. Source is available on Github.
+Marquee.js is a jQuery plugin used to build tabs, carousels, and other layout switchers.  It supports transitioning between elements, onhashchange, navigation buttons including next, previous, first, last, and random, as well as touch-based or mouse-click swipe gestures.
 
 ## Usage
 
