@@ -3,7 +3,7 @@
  * Marquee 
  * An interactive element for displaying information.
  * Code by Scott Munn
- * @version 0.6
+ * @version 0.6.1
  *
  * @description Marquee elements, similar to tabs, are able to slide, allowing for animated effects. While tab panels are usually hidden (display:none), marquee panels are hidden in the overflow area, so that while the user does not see them, they are easy to move around for visual effects.
  *
@@ -48,6 +48,8 @@ $.fn.marqueeize = function(options) {
         if (link.length == 1) {
             index = link.parent("li").index();
             link.parent("li").addClass(settings.css_active_name).siblings().removeClass(settings.css_active_name);
+            $("._autoCurrentHash").removeClass("_autoCurrentHash");
+            $('a[href*="'+hash+'"]').not('.marquee-nav li a[href*="'+hash+'"]').addClass("_autoCurrentHash"); // Since these links already give themselves a current class
         }
     }
     // Assign the marquee function to any number of marquees returned by the jQuery function
@@ -218,7 +220,7 @@ $.fn.marqueeAutoplayEnable = function () {
                 if (!marquee.data('hover') && marquee.data('autoplay')) { marquee.marqueeGoTo("next"); }
             },global_marquee_settings.autoplay_slide_duration);
         }
-    ).("autoplay-off").addClass("autoplay-on");
+    ).removeClass("autoplay-off").addClass("autoplay-on");
 }
 
 /**
@@ -475,44 +477,13 @@ $(function(){
 
 /**
  * 
- * version 0.1
- * - Initial version
+ * 0.6.1
+ * - Bug fixes
+ * - If page is initialized with a #hash, links that point to this #hash will now get .autoCurrentHash class
  *
- * 0.2
- * - Added new fade type (use hide_transitions: true)
- *
- * 0.3
- * - Bug fixed: Multiple .marqueeize functions attached multiple .click functions to elements
- *
- * 0.3.1
- * - Added marqueeGoTo("initialize") which is a clean way of initializing a marquee.  
- * - Cleaned up fade transition effect
- *
- * 0.3.2
- * - Changed the way autoplay sets the autoplay interval.  It now clears the timer when you hover over the content, so that when you hover off, the full timer runs (instead of it just being a loop and potentially a fraction of the timer run)
- *
- * 0.3.3
- * - Fixed a bug where panels did not properly scroll that contained an inline list item
- *
- * 0.4
- * - Added hash support.  On page load, if a <A> of one of the tabs matches the hash (<a href="#load_this_tab"), then that tab will be auto-selected on page load.
- *
- * 0.4.1 
- * - Fixes a bug where the first tab would not be initialized if its' hash was used.  Also cleaned up initialization code.
- *
- * 0.4.2
- * - Added a hash "listener", so that the active tab will change if a hash link is clicked. 
- *
- * 0.4.3
- * - Special edits
- *
- * 0.4.5
- * - Added "infinite" carousel option, where instead of revolving backwards, the carousel will appear to loop forever.  limitation: going backwards on the first panel does not animate flawlessly.  therefore, looping backward from the first will use a fade for a more graceful transition.
- * - Changed the way the counter is updated to account for this new carousel type.  A data-original-length attribute is attached to the marquee with the number of the original elements in the marquee.
- *
-
  * 0.6
  * - Adds swipe support: left / right.  Tested on Android and iOS5.  Uses mouseup/mousedown for desktop swiping.  Set enableTouch setting to true to enable, and set swipeThreshold if needed.  Can also customize touchstartevent and touchendevent variables if only one type (mousedown or touch) is desired.  By default, it maps to both.
+ *
  * 0.5.4
  * - Ensures that the height is always set correctly on page load if the marquee can auto-resize
  *
@@ -558,4 +529,39 @@ $(function(){
  * 0.4.6
  * - Changed "hide transition" speed from 150ms to 10ms
  * - Optimizing marquee.css to be more library-like
+ * 0.4.5
+ * - Added "infinite" carousel option, where instead of revolving backwards, the carousel will appear to loop forever.  limitation: going backwards on the first panel does not animate flawlessly.  therefore, looping backward from the first will use a fade for a more graceful transition.
+ * - Changed the way the counter is updated to account for this new carousel type.  A data-original-length attribute is attached to the marquee with the number of the original elements in the marquee.
+ * 0.4.3
+ * - Special edits
  *
+ * 0.4.2
+ * - Added a hash "listener", so that the active tab will change if a hash link is clicked. 
+ *
+ * 0.4.1 
+ * - Fixes a bug where the first tab would not be initialized if its' hash was used.  Also cleaned up initialization code.
+ *
+ * 0.4
+ * - Added hash support.  On page load, if a <A> of one of the tabs matches the hash (<a href="#load_this_tab"), then that tab will be auto-selected on page load.
+ *
+ * 0.3.3
+ * - Fixed a bug where panels did not properly scroll that contained an inline list item
+ *
+ * 0.3.2
+ * - Changed the way autoplay sets the autoplay interval.  It now clears the timer when you hover over the content, so that when you hover off, the full timer runs (instead of it just being a loop and potentially a fraction of the timer run)
+ *
+ * 0.3.1
+ * - Added marqueeGoTo("initialize") which is a clean way of initializing a marquee.  
+ * - Cleaned up fade transition effect
+ *
+ * 0.3
+ * - Bug fixed: Multiple .marqueeize functions attached multiple .click functions to elements
+ *
+ * 0.2
+ * - Added new fade type (use hide_transitions: true)
+ *
+ * version 0.1
+ * - Initial version
+ *
+ *
+ **/
