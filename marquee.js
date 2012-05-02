@@ -92,8 +92,8 @@ $.fn.marqueeize = function(options) {
 		        	
 		        	if (y_change < 0) { y_swipe = "up"; }
 		        	else if (y_change > 0) { y_swipe = "down"; }
-
-					if (x_change > y_change) { // Ensures only swipes intended to be horizontal are registered
+		        	
+					if (Math.abs(x_change) > Math.abs(y_change)) { // Ensures only swipes intended to be horizontal are registered
 	       				if (x_swipe == "left" && Math.abs(x_change) > settings.swipeThreshold) { 
 	       					if ($(this).find(".marquee-panel." + settings.css_active_name).index() != 0) { $(this).marqueeGoTo("prev"); }
 	       					else { // Bounce effect
@@ -104,7 +104,7 @@ $.fn.marqueeize = function(options) {
 	       					else { // Bounce effect
 	       						var orig = $(this).find(".marquee-panels").css("margin-left").replace("px","");
 	       						$(this).find(".marquee-panels").animate({"margin-left":(orig - 40)}, 200).animate({"margin-left":(orig)}, 400, (jQuery.easing['easeOutBounce']) ? "easeOutBounce" : "swing"); }
-	       				}
+	       				} 
 					}
 
        				$(this).data({"start_x":null,"end_x":null});
@@ -421,6 +421,10 @@ $.fn.marqueeGoTo = function(index,force_panel) {
         	
         	}
         }
+        
+        var this_hash = nav.find(".current a").attr("href");
+        $("._autoCurrentHash").removeClass("_autoCurrentHash");
+        $('a[href*="'+this_hash+'"]').not('.marquee-nav li a[href*="'+this_hash+'"]').addClass("_autoCurrentHash"); // Since these links already give themselves a current class
     });
 }
 
