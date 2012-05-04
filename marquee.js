@@ -48,18 +48,17 @@ $.fn.marqueeize = function(options) {
         if (link.length == 1) {
             index = link.parent("li").index();
             link.parent("li").addClass(settings.css_active_name).siblings().removeClass(settings.css_active_name);
-            $("._autoCurrentHash").removeClass("_autoCurrentHash");
-            $('a[href*="'+hash+'"]').not('.marquee-nav li a[href*="'+hash+'"]').addClass("_autoCurrentHash"); // Since these links already give themselves a current class
+            update_current_hashlinks(hash);
         }
     }
     // Assign the marquee function to any number of marquees returned by the jQuery function
     return this.each(function(){
         var marquee = $(this);
-        if (marquee.hasClass("fixed")) { settings.resizable = false; }
+        
 		if (marquee.hasClass("hasBeenMarqueed")) { /*console.log("The following marquee has already received instruction and will not receive further instruction."); console.log(marquee); */}
 		else {
 	        if (options) { $.extend(settings,options); } // Merge provided options with defaults
-
+			if (marquee.hasClass("fixed")) { settings.resizable = false; }
 			marquee.addClass("hasBeenMarqueed");
 	    
 	        // Navigation elements
@@ -100,7 +99,7 @@ $.fn.marqueeize = function(options) {
 	       						var orig = $(this).find(".marquee-panels").css("margin-left").replace("px","");
 	       						$(this).find(".marquee-panels").animate({"margin-left":(orig + 40)}, 200).animate({"margin-left":(orig)}, 400, (jQuery.easing['easeOutBounce']) ? "easeOutBounce" : "swing"); }
 	       				} else if (x_swipe == "right" && Math.abs(x_change) > settings.swipeThreshold) { 
-	       					if ($(this).find(".marquee-panel." + settings.css_active_name).index() != ($(this).attr("data-original-length") - 1)) { $(this).marqueeGoTo("next"); }
+	       					if ($(this).find(".marquee-panel." + settings.css_active_name).index() != (parseInt(marquee.find(".marquee-panel").length - 1))) { $(this).marqueeGoTo("next"); }
 	       					else { // Bounce effect
 	       						var orig = $(this).find(".marquee-panels").css("margin-left").replace("px","");
 	       						$(this).find(".marquee-panels").animate({"margin-left":(orig - 40)}, 200).animate({"margin-left":(orig)}, 400, (jQuery.easing['easeOutBounce']) ? "easeOutBounce" : "swing"); }
@@ -286,7 +285,7 @@ $.fn.marqueeGoTo = function(index,force_panel) {
             	panels = $(panels_container).children(".marquee-panel"),
             	container_width = panels_container.width();
             	
-            if (index > total_index) { // End, going to beginning
+            if (index == total_index) { // End, going to beginning // Change > to == on 5/4/12, builds infinite one ahead of when needed
                 
                 panels.clone().appendTo(panels_container);
                 panels_container.width(container_width*2);
@@ -325,17 +324,31 @@ $.fn.marqueeGoTo = function(index,force_panel) {
                 coordinates = panel.position(), // Get the coordinates of this panel
                 margin = container.css("margin-left").replace('px',''), // Figure out the margin of the panel container
                 travelTo = parseInt(coordinates.left,10) - parseInt(margin,10), // Use left coordinate and inverse of margin for new coordinates
+                leftOffset = marquee.attr("data-left-offset"), // An optional left offset used when calculating margin-left for marquees that are slightly off center with visible exterior panels
                 text = $(settings.fade_text_selectors,marquee); // Grab text so we can fade it
+
+			if (leftOffset) { travelTo = travelTo - leftOffset;}
 
             /* Fixing padding issue */
             var padding_left = marquee.css("padding-left").replace('px','');
             travelTo = parseInt(travelTo,10) - parseInt(padding_left,10);
+            
+            console.log(travelTo);
            
             nav.find("."+settings.css_active_name).removeClass(settings.css_active_name); // Remove current from direct nav
             nav.find("li:eq("+index+")").addClass(settings.css_active_name); // Give new current item the current class
             
             marquee.find(".marquee-panels").first().children("."+settings.css_active_name).removeClass(settings.css_active_name); // Remove current from direct nav            
             panel.addClass(settings.css_active_name);  // Give new current panel the current class
+            marquee.removeClass("current-panel-"+ marquee.attr("data-current-panel")).attr("data-current-panel", (parseInt(index)+1)).addClass("current-panel-"+(parseInt(index)+1));
+            if (index == 0) {
+            	marquee.addClass("current-panel-first").removeClass("current-panel-last");
+            } else if (index == total_index) {
+				marquee.addClass("current-panel-last").removeClass("current-panel-first");
+            } else {
+            	marquee.removeClass("current-panel-first current-panel-last");
+            }
+
             
             marquee.find(".counter .index").html(parseInt(index)+1); // Update a counter (1 of 6) if it exists
             
@@ -355,17 +368,18 @@ $.fn.marqueeGoTo = function(index,force_panel) {
 
 			// Make the transition
 			travelTo = travelTo * -1;
-
+                console.log("moving");
             if ((settings.hide_transitions && current_index != -1) || temp_hide_trans == true) {
            		// Do the transition instantly -- don't make it visible to user
            		
 
                 var fadeable = marquee.find("h1,.summary");
+
                 if (fadeable.length > 0) {
                 	// Run this if there are fadeable inline elements
 	                fadeable.fadeTo(10,0, function(){
 	                    container.css({"margin-left": travelTo}, 1000, "swing", function(){
-	                        fadeable.fadeTo(10,1);
+	                        fadeable.fadeTo(100,1);
                         	if (settings.resizable == true) { 
 			                	viewport.css({"height": panel_height+"px"}); 
 			                	container.css({"height": panel_height+"px"});
@@ -373,8 +387,6 @@ $.fn.marqueeGoTo = function(index,force_panel) {
 	                    });
 	                });                 
                 } else {
-                
-
                     container.css({"margin-left": travelTo}, 1000, "swing", function(){
                         fadeable.fadeTo(10,1);
                        	// Run this if there are not fadeable inline elements
@@ -389,7 +401,6 @@ $.fn.marqueeGoTo = function(index,force_panel) {
                 if (settings.fade_text) { text.fadeTo(400,.1); } // Fade out the text
                 if ($(marquee).hasClass("fast") == true) { settings.transition_speed = 1;} 
                 
-
 				container.animate({"margin-left": travelTo}, settings.transition_speed, "swing", function () {
 					if (settings.resizable == true && panel_height != viewport.height()) { 
 	                	/* Comment out if IE can't animate correctly */
@@ -422,9 +433,8 @@ $.fn.marqueeGoTo = function(index,force_panel) {
         	}
         }
         
-        var this_hash = nav.find(".current a").attr("href");
-        $("._autoCurrentHash").removeClass("_autoCurrentHash");
-        $('a[href*="'+this_hash+'"]').not('.marquee-nav li a[href*="'+this_hash+'"]').addClass("_autoCurrentHash"); // Since these links already give themselves a current class
+        /* Update links on page if they link to this panel */
+        update_current_hashlinks(nav.find(".current a").attr("href"));
     });
 }
 
@@ -439,12 +449,20 @@ function activate_marquee_hashchange() {
 
     $("._autoCurrentHash").removeClass("_autoCurrentHash");
     $.each(link,function(){
-        $('a[href*="'+new_hash+'"]').not('.marquee-nav li a[href*="'+new_hash+'"]').addClass("_autoCurrentHash"); // Since these links already give themselves a current class
+//        $('a[href*="'+new_hash+'"]').not('.marquee-nav li a[href*="'+new_hash+'"]').addClass("_autoCurrentHash"); // Since these links already give themselves a current class
         var link_instance = $(this),
             new_index = link_instance.parent("li").index(),
             hash_change_instance = link_instance.parents(".marquee").first();
         hash_change_instance.marqueeGoTo(new_index);
     });
+    update_current_hashlinks(new_hash);
+}
+
+function update_current_hashlinks(hash) {
+    $("._autoCurrentHash").removeClass("_autoCurrentHash");
+	if (hash != "" && hash != "#") {
+	    $('a[href*="'+hash+'"]').not('.marquee-nav li a[href*="'+hash+'"]').addClass("_autoCurrentHash"); // Since these links already give themselves a current class
+	}
 }
 
 
@@ -472,6 +490,17 @@ $(function(){
             }
         });
     }
+    
+            
+	// Ancillary functions
+	
+	// Make some marquee panels clickable in special cases
+	$(".clickToFocus .marquee-panel").live("click",function(){
+		if (!$(this).hasClass("current")) {
+			$(this).closest(".marquee").marqueeGoTo($(this).index());
+		}
+	});
+
 });
 ////////////////////////
 // END INITIALIZATION //
@@ -480,6 +509,13 @@ $(function(){
 
 
 /**
+ * 
+ * 0.6.2
+ * - .marquee elements now receive CSS classes that tell its current position, including .current-panel-first, .current-panel-last, and .current-panel-#, where # is the number of the current panel (not the index position)
+ * - Improves _autoCurrentHash class to only be given when a real hash link exists (no # with nothing following it)
+ * - Add ".fixed" to .marquee to override auto height resizing
+ * - Fixes swipes not working correctly on "infinite" scrollers
+ * - Add ".clickToFocus" class option which allows inactive panels to be clicked and cause them to become current
  * 
  * 0.6.1
  * - Bug fixes
