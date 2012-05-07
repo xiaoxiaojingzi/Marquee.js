@@ -3,7 +3,7 @@
  * Marquee 
  * An interactive element for displaying information.
  * Code by Scott Munn
- * @version 0.6.1
+ * @version 0.6.2
  *
  * @description Marquee elements, similar to tabs, are able to slide, allowing for animated effects. While tab panels are usually hidden (display:none), marquee panels are hidden in the overflow area, so that while the user does not see them, they are easy to move around for visual effects.
  *
@@ -70,8 +70,10 @@ $.fn.marqueeize = function(options) {
 	        marquee.find(".marquee_random").first().on("click", function(e){ e.preventDefault();$(this).parents(".marquee").first().marqueeGoTo("random");});
 
 			// Touch event navigation
-			if (settings.enableTouch) {
+			if (settings.enableTouch && !marquee.hasClass("clickToFocus")) {
 		        marquee.on(settings.touchstartevent,function(e){
+		        	marquee.addClass("swiping");
+					console.log(settings.touchstartevent);
 					if (settings.touchstartevent == "mousedown") { e.preventDefault(); /* Prevents highlight or grabbing elements on desktop browsers */ }
 					var x = (e.pageX) ? e.pageX : e.originalEvent.changedTouches[0].pageX,
 						y = (e.pageY) ? e.pageY : e.originalEvent.changedTouches[0].pageY;
@@ -107,6 +109,7 @@ $.fn.marqueeize = function(options) {
 					}
 
        				$(this).data({"start_x":null,"end_x":null});
+    				
  	        	});
  	        	
  	        }
@@ -333,7 +336,7 @@ $.fn.marqueeGoTo = function(index,force_panel) {
             var padding_left = marquee.css("padding-left").replace('px','');
             travelTo = parseInt(travelTo,10) - parseInt(padding_left,10);
             
-            console.log(travelTo);
+            // console.log(travelTo);
            
             nav.find("."+settings.css_active_name).removeClass(settings.css_active_name); // Remove current from direct nav
             nav.find("li:eq("+index+")").addClass(settings.css_active_name); // Give new current item the current class
@@ -368,7 +371,7 @@ $.fn.marqueeGoTo = function(index,force_panel) {
 
 			// Make the transition
 			travelTo = travelTo * -1;
-                console.log("moving");
+
             if ((settings.hide_transitions && current_index != -1) || temp_hide_trans == true) {
            		// Do the transition instantly -- don't make it visible to user
            		
@@ -496,7 +499,7 @@ $(function(){
 	
 	// Make some marquee panels clickable in special cases
 	$(".clickToFocus .marquee-panel").live("click",function(){
-		if (!$(this).hasClass("current")) {
+		if (!$(this).closest(".marquee").hasClass("swiping") && !$(this).hasClass("current")) {
 			$(this).closest(".marquee").marqueeGoTo($(this).index());
 		}
 	});
@@ -515,7 +518,7 @@ $(function(){
  * - Improves _autoCurrentHash class to only be given when a real hash link exists (no # with nothing following it)
  * - Add ".fixed" to .marquee to override auto height resizing
  * - Fixes swipes not working correctly on "infinite" scrollers
- * - Add ".clickToFocus" class option which allows inactive panels to be clicked and cause them to become current
+ * - Add ".clickToFocus" class option which allows inactive panels to be clicked and cause them to become current.  These elements are not swipable currently because the browser is not able to separate the swipe and click events.
  * 
  * 0.6.1
  * - Bug fixes
