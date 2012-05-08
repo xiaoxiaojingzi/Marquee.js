@@ -3,7 +3,7 @@
  * Marquee 
  * An interactive element for displaying information.
  * Code by Scott Munn
- * @version 0.6.2
+ * @version 0.6.4
  *
  * @description Marquee elements, similar to tabs, are able to slide, allowing for animated effects. While tab panels are usually hidden (display:none), marquee panels are hidden in the overflow area, so that while the user does not see them, they are easy to move around for visual effects.
  *
@@ -24,8 +24,11 @@ var global_marquee_settings = {
     'autoplay_slide_duration' : 4000, // determines length of slideshow in milliseconds when autoplaying
     'resizable' : true, // If true, the .marquee and .marquee-viewport elements will resizable to the exact size of the active .marquee-panel
     'touchstartevent' : ('ontouchstart' in document.documentElement) ? 'touchstart' : 'mousedown',	// Auto-detects touch event.  Set to one or the other to disable the remainder
-	'touchendevent' : ('ontouchstart' in document.documentElement) ? 'touchend'   : 'mouseup', // Auto-detects touch event.  Set to one or the other to disable the remainder
+    'touchmoveevent' : ('ontouchmove' in document.documentElement) ? 'touchmove'   : 'mousemove', // Auto-detects touch event.  Set to one or the other to disable the remainder
+	'touchendevent' : ('ontouchend' in document.documentElement) ? 'touchend'   : 'mouseup', // Auto-detects touch event.  Set to one or the other to disable the remainder
+	'touchMode': "swipe", // Determines the touch behavior.  "Swipe" only listens for swipes, while "drag" will move elements to follow user action
 	"enableTouch": true, // Determines whether to allow swiping	
+	"hoverActivate": false, // Determine whether hovering over LI should auto-activate
 	"swipeThreshold":30 // Minimum pixel threshold to activate a swipe
 };
 
@@ -58,11 +61,17 @@ $.fn.marqueeize = function(options) {
 		if (marquee.hasClass("hasBeenMarqueed")) { /*console.log("The following marquee has already received instruction and will not receive further instruction."); console.log(marquee); */}
 		else {
 	        if (options) { $.extend(settings,options); } // Merge provided options with defaults
-			if (marquee.hasClass("fixed")) { settings.resizable = false; }
+			if (marquee.hasClass("fixed")) { 
+				settings.resizable = false; 
+				// Add later -- ensure marquee is hieght of largest panel
+				//	marquee.find(".marquee-viewport").css({"height":marquee.find(".marquee-panels").outerHeight()}); // Doesn't work
+			}
+			if (marquee.hasClass("hover-activate")) { settings.hoverActivate = true; }
 			marquee.addClass("hasBeenMarqueed");
 	    
 	        // Navigation elements
-	        marquee.find(".marquee-nav li").click(function(e){ e.preventDefault(); $(this).marqueeClick();});
+	        marquee.find(".marquee-nav li").on("click",function(e){ e.preventDefault(); $(this).marqueeClick();});
+	        if (settings.hoverActivate) { marquee.find(".marquee-nav li").on("mouseover",function(e){ e.preventDefault(); $(this).marqueeClick();}); }
 	        marquee.find(".marquee_prev").first().on("click", function(e){ e.preventDefault();$(this).parents(".marquee").first().marqueeGoTo("prev");});
 	        marquee.find(".marquee_next").first().on("click", function(e){ e.preventDefault();$(this).parents(".marquee").first().marqueeGoTo("next");});
 	        marquee.find(".marquee_first").first().on("click", function(e){ e.preventDefault();$(this).parents(".marquee").first().marqueeGoTo("first");});
@@ -71,16 +80,36 @@ $.fn.marqueeize = function(options) {
 
 			// Touch event navigation
 			if (settings.enableTouch && !marquee.hasClass("clickToFocus")) {
+			
 		        marquee.on(settings.touchstartevent,function(e){
-		        	marquee.addClass("swiping");
-					console.log(settings.touchstartevent);
+		        	
+		        	var x_origin = e.clientX,
+			        	margin_origin = $(this).find(".marquee-panels").css("margin-left").replace("px","");
+
 					if (settings.touchstartevent == "mousedown") { e.preventDefault(); /* Prevents highlight or grabbing elements on desktop browsers */ }
 					var x = (e.pageX) ? e.pageX : e.originalEvent.changedTouches[0].pageX,
 						y = (e.pageY) ? e.pageY : e.originalEvent.changedTouches[0].pageY;
 					$(this).data({"start_x":x,"start_y":y});
+					
+					if (settings.touchMode == "drag") {
+						marquee.addClass("touch-event-occurring");
+						 marquee.on(settings.touchmoveevent, function(e){
+				        	e.preventDefault();
+				        	// To add -- support for touch screen
+				        	var x = (e.pageX) ? e.pageX : e.originalEvent.changedTouches[0].pageX;
+				        	var distance = x - parseInt(x_origin);
+				        	var	new_margin = parseInt(margin_origin) + parseInt(distance);
+				        	marquee.find(".marquee-panels").css("margin-left",new_margin);
+	
+				        });
+			        }
 		        });
 		        
 		        marquee.on(settings.touchendevent,function(e){	
+		        	marquee.off(settings.touchmoveevent);
+		        	marquee.removeClass("touch-event-occurring");
+					var marquee_moved = false; // Flag to ensure that movement occurs 
+		        
 		        	var x_swipe, y_swipe,
 		        		x = (e.pageX) ? e.pageX : e.originalEvent.changedTouches[0].pageX,
 						y = (e.pageY) ? e.pageY : e.originalEvent.changedTouches[0].pageY;
@@ -96,19 +125,26 @@ $.fn.marqueeize = function(options) {
 		        	
 					if (Math.abs(x_change) > Math.abs(y_change)) { // Ensures only swipes intended to be horizontal are registered
 	       				if (x_swipe == "left" && Math.abs(x_change) > settings.swipeThreshold) { 
-	       					if ($(this).find(".marquee-panel." + settings.css_active_name).index() != 0) { $(this).marqueeGoTo("prev"); }
+	       					if ($(this).find(".marquee-panel." + settings.css_active_name).index() != 0) { $(this).marqueeGoTo("prev"); marquee_moved = true; }
 	       					else { // Bounce effect
 	       						var orig = $(this).find(".marquee-panels").css("margin-left").replace("px","");
-	       						$(this).find(".marquee-panels").animate({"margin-left":(orig + 40)}, 200).animate({"margin-left":(orig)}, 400, (jQuery.easing['easeOutBounce']) ? "easeOutBounce" : "swing"); }
+	       						$(this).find(".marquee-panels").animate({"margin-left":(orig + 40)}, 200).animate({"margin-left":(orig)}, 400, (jQuery.easing['easeOutBounce']) ? "easeOutBounce" : "swing"); marquee_moved = true; }
 	       				} else if (x_swipe == "right" && Math.abs(x_change) > settings.swipeThreshold) { 
-	       					if ($(this).find(".marquee-panel." + settings.css_active_name).index() != (parseInt(marquee.find(".marquee-panel").length - 1))) { $(this).marqueeGoTo("next"); }
+	       					if ($(this).find(".marquee-panel." + settings.css_active_name).index() != (parseInt(marquee.find(".marquee-panel").length - 1))) { $(this).marqueeGoTo("next"); marquee_moved = true; }
 	       					else { // Bounce effect
 	       						var orig = $(this).find(".marquee-panels").css("margin-left").replace("px","");
-	       						$(this).find(".marquee-panels").animate({"margin-left":(orig - 40)}, 200).animate({"margin-left":(orig)}, 400, (jQuery.easing['easeOutBounce']) ? "easeOutBounce" : "swing"); }
+	       						$(this).find(".marquee-panels").animate({"margin-left":(orig - 40)}, 200).animate({"margin-left":(orig)}, 400, (jQuery.easing['easeOutBounce']) ? "easeOutBounce" : "swing"); marquee_moved = true; }
 	       				} 
+					} else {
+						
 					}
 
        				$(this).data({"start_x":null,"end_x":null});
+       				
+       				// Auto-fix marquee if swipe wasn't activated
+       				if (marquee_moved == false) {
+       					marquee.marqueeGoTo("current");
+       				} 
     				
  	        	});
  	        	
@@ -239,10 +275,10 @@ $.fn.marqueeGoTo = function(index,force_panel) {
 
     return this.each(function(){
         var marquee = $(this),
+        	force_refresh = false,
             current_index = marquee.find(".marquee-panels").first().children("."+settings.css_active_name).index(),
             total_index = marquee.find(".marquee-panels").first().children(".marquee-panel").length - 1;
         if (current_index == -1) { current_index = 0; } // -1 is given when none exists
-        
 
         // Parse the index value    
         switch(index) {
@@ -252,6 +288,13 @@ $.fn.marqueeGoTo = function(index,force_panel) {
                 settings.fade_text = false;
                 var temp_hide_trans = true;
                 var fix_height = true;
+            break;
+            
+            case "current":
+				
+            	index = current_index;
+//            	current_index = index-1;
+            	//force_refresh = true;
             break;
         
             case "next":
@@ -317,7 +360,8 @@ $.fn.marqueeGoTo = function(index,force_panel) {
     // Actually make the move
     	if (force_panel != null) { index = force_panel; }
 
-        if (current_index != index) { // Only do the transition if we want a different panel
+//        if (current_index != index  || force_refresh) { // For some reason this slows down everything
+		if (current_index != index ) { // Only do the transition if we want a different panel 
 
             var container = marquee.find(".marquee-panels").first(), // This element holds the panels
             	viewport = marquee.find(".marquee-viewport").first(),
@@ -417,27 +461,34 @@ $.fn.marqueeGoTo = function(index,force_panel) {
 	                }
 				});
             }
-        }
-        var original_length = $(marquee).attr("data-original-length");
-        if (original_length != null) { // Accounts for cloning panels (seamless sliding) SM
-            $("#current_slide").text((index % original_length + 1) + "/" + original_length); // changes label for current slide (ie, "1 of 3") 
-        } else {
-            $("#current_slide").text((index+1) + "/" + (total_index+1)); // changes label for current slide (ie, "1 of 3") 
-        }
-        
-        if (fix_height == true) {
-        	if (settings.hide_transitions) {
-	        	viewport.css({"height": panel_height+"px"}); 
-	        	container.css({"height": panel_height+"px"});        	
-        	} else {
-	            viewport.animate({"height": panel_height+"px"}, (settings.transition_speed/2)); 
-		    	container.animate({"height": panel_height+"px"}, (settings.transition_speed/2));
         	
-        	}
+        	var original_length = $(marquee).attr("data-original-length");
+	        if (original_length != null) { // Accounts for cloning panels (seamless sliding) SM
+	            $("#current_slide").text((index % original_length + 1) + "/" + original_length); // changes label for current slide (ie, "1 of 3") 
+	        } else {
+	            $("#current_slide").text((index+1) + "/" + (total_index+1)); // changes label for current slide (ie, "1 of 3") 
+	        }
+	        
+	        if (fix_height == true) {
+	        	if (settings.hide_transitions) {
+		        	viewport.css({"height": panel_height+"px"}); 
+		        	container.css({"height": panel_height+"px"});        	
+	        	} else {
+		            viewport.animate({"height": panel_height+"px"}, (settings.transition_speed/2)); 
+			    	container.animate({"height": panel_height+"px"}, (settings.transition_speed/2));
+	        	
+	        	}
+	        }
+	        console.log(marquee);
+	        /* Update links on page if they link to this panel */
+	        console.log(nav);
+	        if (nav) {
+	        	update_current_hashlinks(nav.find(".current a").attr("href"));
+	        }
+        
         }
         
-        /* Update links on page if they link to this panel */
-        update_current_hashlinks(nav.find(".current a").attr("href"));
+        
     });
 }
 
@@ -503,16 +554,40 @@ $(function(){
 			$(this).closest(".marquee").marqueeGoTo($(this).index());
 		}
 	});
+	
 
 });
 ////////////////////////
 // END INITIALIZATION //
 ////////////////////////
 
+/**
+ * IE7 Hashchange Polyfill
+ * jQuery hashchange event - v1.3 - 7/21/2010
+ * http://benalman.com/projects/jquery-hashchange-plugin/
+ * 
+ * Copyright (c) 2010 "Cowboy" Ben Alman
+ * Dual licensed under the MIT and GPL licenses.
+ * http://benalman.com/about/license/
+ */
+(function($,e,b){var c="hashchange",h=document,f,g=$.event.special,i=h.documentMode,d="on"+c in e&&(i===b||i>7);function a(j){j=j||location.href;return"#"+j.replace(/^[^#]*#?(.*)$/,"$1")}$.fn[c]=function(j){return j?this.bind(c,j):this.trigger(c)};$.fn[c].delay=50;g[c]=$.extend(g[c],{setup:function(){if(d){return false}$(f.start)},teardown:function(){if(d){return false}$(f.stop)}});f=(function(){var j={},p,m=a(),k=function(q){return q},l=k,o=k;j.start=function(){p||n()};j.stop=function(){p&&clearTimeout(p);p=b};function n(){var r=a(),q=o(m);if(r!==m){l(m=r,q);$(e).trigger(c)}else{if(q!==m){location.href=location.href.replace(/#.*/,"")+q}}p=setTimeout(n,$.fn[c].delay)}$.browser.msie&&!d&&(function(){var q,r;j.start=function(){if(!q){r=$.fn[c].src;r=r&&r+a();q=$('<iframe tabindex="-1" title="empty"/>').hide().one("load",function(){r||l(a());n()}).attr("src",r||"javascript:0").insertAfter("body")[0].contentWindow;h.onpropertychange=function(){try{if(event.propertyName==="title"){q.document.title=h.title}}catch(s){}}}};j.stop=k;o=function(){return a(q.location.href)};l=function(v,s){var u=q.document,t=$.fn[c].domain;if(v!==s){u.title=h.title;u.open();t&&u.write('<script>document.domain="'+t+'"<\/script>');u.close();q.location.hash=v}}})();return j})()})(jQuery,this);
 
+
+////////////////
+// CHANGE LOG //
+////////////////
 
 /**
  * 
+ * 0.6.4
+ * - Working on draggable marquees.  Set touchMove to drag to enable
+ * - BUG: No touchscreen support
+ * - BUG: Bouncing error when dragging on boundary panels
+ *
+ * 0.6.3
+ * - Add "hoverActivate" option to allow hovering activation of marquee-nav li items.  Add hover-activate class to .marquee or set hoverActivate to true
+ * - Adds "Cowboy" Ben Alman's hashchange polyfill for IE7 support
+ *
  * 0.6.2
  * - .marquee elements now receive CSS classes that tell its current position, including .current-panel-first, .current-panel-last, and .current-panel-#, where # is the number of the current panel (not the index position)
  * - Improves _autoCurrentHash class to only be given when a real hash link exists (no # with nothing following it)
