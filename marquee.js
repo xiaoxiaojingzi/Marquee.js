@@ -3,7 +3,7 @@
  * Marquee 
  * An interactive element for displaying information.
  * Code by Scott Munn
- * @version 0.6.4
+ * @version 0.6.4.2
  *
  * @description Marquee elements, similar to tabs, are able to slide, allowing for animated effects. While tab panels are usually hidden (display:none), marquee panels are hidden in the overflow area, so that while the user does not see them, they are easy to move around for visual effects.
  *
@@ -80,9 +80,9 @@ $.fn.marqueeize = function(options) {
 
 			// Touch event navigation
 			if (settings.enableTouch && !marquee.hasClass("clickToFocus")) {
-			
+//			if (settings.enableTouch) {			
 		        marquee.on(settings.touchstartevent,function(e){
-		        	
+		        	$(this).addClass("swiping");
 		        	var x_origin = e.clientX,
 			        	margin_origin = $(this).find(".marquee-panels").css("margin-left").replace("px","");
 
@@ -107,7 +107,10 @@ $.fn.marqueeize = function(options) {
 		        
 		        marquee.on(settings.touchendevent,function(e){	
 		        	marquee.off(settings.touchmoveevent);
-		        	marquee.removeClass("touch-event-occurring");
+		        	setTimeout(function(){
+			        	marquee.removeClass("touch-event-occurring").removeClass("swiping");	
+		        	},1000);
+		        	
 					var marquee_moved = false; // Flag to ensure that movement occurs 
 		        
 		        	var x_swipe, y_swipe,
@@ -126,12 +129,14 @@ $.fn.marqueeize = function(options) {
 					if (Math.abs(x_change) > Math.abs(y_change)) { // Ensures only swipes intended to be horizontal are registered
 	       				if (x_swipe == "left" && Math.abs(x_change) > settings.swipeThreshold) { 
 	       					if ($(this).find(".marquee-panel." + settings.css_active_name).index() != 0) { $(this).marqueeGoTo("prev"); marquee_moved = true; }
-	       					else { // Bounce effect
+	       					else { // Bounce effect on the beginning (first panel)
 	       						var orig = $(this).find(".marquee-panels").css("margin-left").replace("px","");
-	       						$(this).find(".marquee-panels").animate({"margin-left":(orig + 40)}, 200).animate({"margin-left":(orig)}, 400, (jQuery.easing['easeOutBounce']) ? "easeOutBounce" : "swing"); marquee_moved = true; }
+	       						var bounce_this_far = 40;
+	       						if ($(this).attr("data-left-offset")) { bounce_this_far = bounce_this_far + $(this).attr("data-left-offset"); }
+	       						$(this).find(".marquee-panels").animate({"margin-left":(orig + bounce_this_far)}, 200).animate({"margin-left":(orig)}, 400, (jQuery.easing['easeOutBounce']) ? "easeOutBounce" : "swing"); marquee_moved = true; }
 	       				} else if (x_swipe == "right" && Math.abs(x_change) > settings.swipeThreshold) { 
 	       					if ($(this).find(".marquee-panel." + settings.css_active_name).index() != (parseInt(marquee.find(".marquee-panel").length - 1))) { $(this).marqueeGoTo("next"); marquee_moved = true; }
-	       					else { // Bounce effect
+	       					else { // Bounce effect on the end (last panel)
 	       						var orig = $(this).find(".marquee-panels").css("margin-left").replace("px","");
 	       						$(this).find(".marquee-panels").animate({"margin-left":(orig - 40)}, 200).animate({"margin-left":(orig)}, 400, (jQuery.easing['easeOutBounce']) ? "easeOutBounce" : "swing"); marquee_moved = true; }
 	       				} 
@@ -268,7 +273,6 @@ $.fn.marqueeAutoplayEnable = function () {
  * @param options - Settings array
  **/
 $.fn.marqueeGoTo = function(index,force_panel) {
-
     if (index == null) { index = 0; }
     var settings = global_marquee_settings;
     var instance = $(this); 
@@ -479,9 +483,7 @@ $.fn.marqueeGoTo = function(index,force_panel) {
 	        	
 	        	}
 	        }
-	        console.log(marquee);
 	        /* Update links on page if they link to this panel */
-	        console.log(nav);
 	        if (nav) {
 	        	update_current_hashlinks(nav.find(".current a").attr("href"));
 	        }
@@ -552,7 +554,17 @@ $(function(){
 	$(".clickToFocus .marquee-panel").live("click",function(){
 		if (!$(this).closest(".marquee").hasClass("swiping") && !$(this).hasClass("current")) {
 			$(this).closest(".marquee").marqueeGoTo($(this).index());
+		} else {
+			//console.log("prevented");
 		}
+	});
+
+	// Prevents these marquees from activating links when clicking panels	
+	$(".clickToFocus .marquee-panel a").live("click",function(e){
+		if (!$(this).closest(".marquee-panel").is(".current")) {
+			$(this).closest(".marquee").marqueeGoTo($(this).closest(".marquee-panel").index());
+			return false;
+		} 
 	});
 	
 
@@ -578,7 +590,12 @@ $(function(){
 ////////////////
 
 /**
- * 
+ * 0.6.4.2
+ * - Removes a console.log message 
+ *
+ * 0.6.4.1
+ * - Makes links in non-current .clickToFocus panels non-clickable
+ *
  * 0.6.4
  * - Working on draggable marquees.  Set touchMove to drag to enable
  * - BUG: No touchscreen support
