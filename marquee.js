@@ -419,8 +419,12 @@ $.fn.marqueeGoTo = function(index,force_panel,my_settings) {
             	panels = $(panels_container).children(".marquee-panel"),
             	container_width = panels_container.width();
             	
-            if (index == total_index) { // End, going to beginning // Change > to == on 5/4/12, builds infinite one ahead of when needed
-                
+            if (marquee.attr("data-infinite-buffer")) {
+	            var buffered_index = parseInt(marquee.attr("data-infinite-buffer")) + index;
+            } else {
+	            var buffered_index = index;
+            }
+            if (buffered_index == total_index || buffered_index > total_index) { // End, going to beginning // Change > to == on 5/4/12, builds infinite one ahead of when needed
                 panels.clone().appendTo(panels_container);
                 panels_container.width(container_width*2);
                 total_index = (total_index * 2) + 1;
@@ -698,6 +702,9 @@ function cloneObject(source) {
 ////////////////
 
 /**
+ * 0.7.1
+ * - Infinite marquees: adds support for "buffering" new slides, allowing you to designate a number of slides ahead of time when the clone operation should take place (in cases where the design would show white-space on the edge of the screen otherwise).  Use a number for the data-infinite-buffer attribute on the .marquee element: data-infinite-buffer="3" to do it when you are 3 slides away from the end.
+ *
  * 0.7
  * - Adds events for easy scripting: init, newPanel, prev, next, first, last, random, deselect, navClick, navHover, beginning, end, hashUpdate, clickToFocus, swiped
  * - Working on new types of sliders: multiple panels visible, next button moves "pages" of panels, etc

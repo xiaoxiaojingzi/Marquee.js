@@ -93,7 +93,7 @@
 			color:#333
 		}
 		
-		code {
+		pre, code {
 			background:#eee;
 			border:1px solid #444;
 			color:#000;
@@ -272,6 +272,60 @@ var global_marquee_settings = {
 <br />&nbsp;&nbsp;'resizable' : true // If true, the .marquee and .marquee-viewport elements will resizable to the exact size of the active .marquee-panel
 <br />};	    
 	    </code>
+	    
+	    <h2>Demo Gallery</h2>
+	    
+	    <h4>Infinite Marquee</h4>
+	    
+	    <p>An infinite marquee will let the user click next infinitely by cloning the panels when it reaches the end.  Just add the "infinite" class to a .marquee element and you should be good to go.</p>
+	    
+	    <div class="demo">
+	    	<div id="sample_marquee" class="marquee infinite">
+				<div class="marquee-viewport">
+		            <ol id="marquee-panels" class="marquee-panels">
+		                <li class="marquee-panel">
+		                	I always
+		                </li>
+		                <li class="marquee-panel">
+							slide to
+		                </li>
+		                <li class="marquee-panel">
+		                	the right
+		                </li>
+		            </ol>
+		        </div>
+		        <a href="#" class="marquee_prev">Previous</a>
+				<a href="#" class="marquee_next">Next</a>
+		    </div>
+	    </div>
+	    
+	    <h5>Buffering upcoming slides</h5>
+	    <p>Use the data-infinite-buffer attribute on the marquee element in order to "buffer" upcoming slides.  This is useful when your design fills the whole screen and you might have some whitespace on the right side of the screen before the last panel becomes the "active" panel.  The number used should be the difference between your total number of slides minus the slide number you want it active on.  For example, <strong>3 total slides</strong>, you want it to clone when it reaches <strong>slide 2</strong>, then 3-2=<strong>1</strong>.</p>
+	    
+	    <pre>&lt;div id="your_marquee" data-infinite-buffer="1" class="marquee infinite"&gt;
+&nbsp;&nbsp;&nbsp;&nbsp;[ . . . ]	    
+&lt;div&gt;</pre>
+	    
+	     <div class="demo">
+	    	<div id="sample_marquee" data-infinite-buffer="1" class="marquee infinite">
+				<div class="marquee-viewport">
+		            <ol id="marquee-panels" class="marquee-panels">
+		                <li class="marquee-panel">
+		                	Look at the inspector to see than when you click to the next slide
+		                </li>
+		                <li class="marquee-panel">
+							that the new panels should have been cloned.
+		                </li>
+		                <li class="marquee-panel">
+		                	Cool, huh?
+		                </li>
+		            </ol>
+		        </div>
+		        <a href="#" class="marquee_prev">Previous</a>
+				<a href="#" class="marquee_next">Next</a>
+		    </div>
+	    </div>
+	      
 	    
 
 	            
