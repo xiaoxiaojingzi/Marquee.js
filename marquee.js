@@ -3,7 +3,7 @@
  * Marquee 
  * An interactive element for displaying information.
  * Code by Scott Munn
- * @version 0.7
+ * @version 0.7.2
  *
  * @description Marquee elements, similar to tabs, are able to slide, allowing for animated effects. While tab panels are usually hidden (display:none), marquee panels are hidden in the overflow area, so that while the user does not see them, they are easy to move around for visual effects.
  *
@@ -65,7 +65,7 @@ $.fn.marqueeize = function(options) {
         settings._m = $(marquee);
         settings._id = marquee.attr("id");
         
-		if (marquee.hasClass("hasBeenMarqueed")) { /*console.log("The following marquee has already received instruction and will not receive further instruction."); console.log(marquee); */}
+		if (marquee.hasClass("hasBeenMarqueed")) { /*// console.log("The following marquee has already received instruction and will not receive further instruction."); // console.log(marquee); */}
 		else {
 			marquee.trigger("init");
 	        marquee.addClass("hasBeenMarqueed");
@@ -78,13 +78,38 @@ $.fn.marqueeize = function(options) {
 			} else {
 				settings.resizable = true;
 			}
+
 			if (marquee.hasClass("hover-activate")) { settings.hoverActivate = true; } else { settings.hoverActivate = false;}
 			if (marquee.hasClass("autosize")) { settings.autosize = true; } else { settings.autosize = false; }
-			if (marquee.hasClass("no-autoselect")) { settings.autoselect = false; } else { settings.autosize = true; }
+			if (marquee.hasClass("no-autoselect")) { settings.autoselect = false; } else { settings.autoselect = true; }
 			
+			if (marquee.attr("data-left-offset") == "center") {
+				// console.log(marquee.find('.marquee-panel').width());
+				// console.log($(window).width());
+				var new_offset = ($(window).width() - marquee.find('.marquee-panel').width())/2;
+				marquee.attr("data-left-offset",new_offset).addClass("leftOffsetCentered");
+				
+				var leftOffsetCentered_timeout;
+				$(window).on(settings.orientationevent,function(){
+					clearTimeout(leftOffsetCentered_timeout);
+					leftOffsetCentered_timeout = setTimeout(function(){
+						// Fix auto-centered marquees
+						var centers = $(".leftOffsetCentered");
+						$.each(centers,function(i,el){
+							el = $(el);
+							var new_offset = ($(window).width() - el.find('.marquee-panel').width())/2;
+							el.attr("data-left-offset",new_offset).addClass("leftOffsetCentered");
+							el.marqueeGoTo("current", null, settings);
+						});
+
+					},200);
+				});
+
+			}
+		
 			/* Check autosize */
 			if (settings.autosize) {
-				console.log(settings);
+				// console.log(settings);
 				var new_width = marquee.width();
 				marquee.addClass("autosized").find(".marquee-panel,.marquee-viewport").width(new_width);
 
@@ -93,12 +118,12 @@ $.fn.marqueeize = function(options) {
 
 				$(window).on(settings.orientationevent,function(){
 					var new_width = marquee.width();
-					marquee.find(".marquee-panel,.marquee-viewport").width(new_width);
+					marquee.find(".marquee-panel,.marquee-viewport").width(new_width).attr("data-width","yes");
 					clearTimeout(timeout);
 					timeout = setTimeout(function(){
-						console.log("Fixing");
+						// console.log("Fixing");
 						//var i = marquee.find(".current").index();
-						//console.log(i);
+						// console.log(i);
 						//force_refresh=true;
 						marquee.marqueeGoTo("current", null, settings);
 					},200);
@@ -166,7 +191,7 @@ $.fn.marqueeize = function(options) {
 					if (Math.abs(x_change) > Math.abs(y_change)) { // Ensures only swipes intended to be horizontal are registered
 	       				
 	       				if (Math.abs(x_change) > settings.swipeThreshold) {
-	       					//console.log("swipe registered");
+	       					// console.log("swipe registered");
 		       				marquee.trigger("swiped");
 		       				if (x_swipe == "left") { 
 		       					
@@ -337,7 +362,7 @@ $.fn.marqueeGoTo = function(index,force_panel,my_settings) {
         switch(index) {
             case "initialize": // This is used when initializing a marquee.  Prevents fade effect from occuring on load.
             	if (settings.autoselect) {
-            		//console.log(settings);
+            		// console.log(settings);
 	            	current_index = -1;
 	                index = 0;
 	                settings.fade_text = false;
@@ -361,11 +386,11 @@ $.fn.marqueeGoTo = function(index,force_panel,my_settings) {
 	            	index = parseInt(current_index + fit);	
 	            	
 	            	if (total_index-fit > index) {
-		            	console.log(1);
+		            	// console.log(1);
 	            	} else {
-		            	console.log(2);
+		            	// console.log(2);
 		            	index = total_index-fit+1;
-		            	console.log(index);
+		            	// console.log(index);
 		            	marquee.addClass("current-page-last");
 	            	}
 	            	/*if (index > total_index) {
@@ -472,7 +497,7 @@ $.fn.marqueeGoTo = function(index,force_panel,my_settings) {
             var padding_left = marquee.css("padding-left").replace('px','');
             travelTo = parseInt(travelTo,10) - parseInt(padding_left,10);
             
-            // console.log(travelTo);
+            // // console.log(travelTo);
            
             nav.find("."+settings.css_active_name).removeClass(settings.css_active_name); // Remove current from direct nav
             nav.find("li:eq("+index+")").addClass(settings.css_active_name); // Give new current item the current class
@@ -650,16 +675,16 @@ $(function(){
 	// Ancillary functions
 	
 	// Make some marquee panels clickable in special cases
-	$(".clickToFocus .marquee-panel").live("click",function(){
+	$(".clickToFocus .marquee-panel").on("click",function(){
 		if (!$(this).closest(".marquee").hasClass("swiping") && !$(this).hasClass("current")) {
 			$(this).closest(".marquee").trigger("clickToFocus").marqueeGoTo($(this).index());
 		} else {
-			//console.log("prevented");
+			// console.log("prevented");
 		}
 	});
 
 	// Prevents these marquees from activating links when clicking panels	
-	$(".clickToFocus .marquee-panel a").live("click",function(e){
+	$(".clickToFocus .marquee-panel a").on("click",function(e){
 		if (!$(this).closest(".marquee-panel").is(".current")) {
 			$(this).closest(".marquee").marqueeGoTo($(this).closest(".marquee-panel").index());
 			return false;
@@ -702,6 +727,11 @@ function cloneObject(source) {
 ////////////////
 
 /**
+ * 0.7.2 
+ * - Updated for jQuery 1.9
+ * - Fixes an error where autosize was applied to all marquees
+ * - Adds "center" option for data-left-offset for marquees.  The page will automatically determine the offset so that the active marquee panel will be centered within the window.  Then adds leftOffsetCentered class.
+ *
  * 0.7.1
  * - Infinite marquees: adds support for "buffering" new slides, allowing you to designate a number of slides ahead of time when the clone operation should take place (in cases where the design would show white-space on the edge of the screen otherwise).  Use a number for the data-infinite-buffer attribute on the .marquee element: data-infinite-buffer="3" to do it when you are 3 slides away from the end.
  *
@@ -719,7 +749,7 @@ function cloneObject(source) {
  * - Adds autoselect option to determine whether marquee should autoselect the first panel.  Use ".no-autoselect" to disable.
  * 
  * 0.6.4.2
- * - Removes a console.log message 
+ * - Removes a // console.log message 
  *
  * 0.6.4.1
  * - Makes links in non-current .clickToFocus panels non-clickable
