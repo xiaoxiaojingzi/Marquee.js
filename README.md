@@ -1,3 +1,9 @@
+# Marquee.js is now Svider.js!
+
+I've completed rewritten Marquee.js to be more flexible, faster, and better align with well-formed jQuery plugin architecture.  I'll keep this here for your reference, but otherwise you should use Svider.js.  It's backwards compatible!
+
+https://github.com/Skotlake/Svider.js
+
 # Marquee.js
 
 A jQuery Plugin by Scott Munn

@@ -1,9 +1,13 @@
+/* 
+ * Bugs
+ ** Center marquee does not disable autoplay when panel is clicked
+
 /**
  * @file
  * Marquee 
  * An interactive element for displaying information.
  * Code by Scott Munn
- * @version 0.7.2
+ * @version 0.7.3
  *
  * @description Marquee elements, similar to tabs, are able to slide, allowing for animated effects. While tab panels are usually hidden (display:none), marquee panels are hidden in the overflow area, so that while the user does not see them, they are easy to move around for visual effects.
  *
@@ -13,8 +17,9 @@
  * Use class="marquee fade" for fade transitions; class="marquee" or class="marquee slide" for sliding transition
  **/
 
+var settings;
 var global_marquee_settings = {
-    'css_active_name': "current", // string, name of "current" css class    
+    'css_active_name': "current", // string, name of settings.css_active_name css class    
     'fade_text' : true, // bool, fades out/in text when changing panels
     'fade_text_selectors' : "h1,.summary", // jQuery selectors, CSS selectors of text that will fade in/out, fade_text must be true
     'hide_transitions' : false, // bool.  True = "fade" transition.  False = "slide" transition
@@ -32,7 +37,15 @@ var global_marquee_settings = {
 	"swipeThreshold":30, // Minimum pixel threshold to activate a swipe
 	"autosize": false, // Whether to automatically size the marquee panels based on window / parent size
 	"orientationevent": "onorientationchange" in window ? "orientationchange" : "resize", // Sets up orientation change
-	"autoselect": true // Whether the first panel should be selected
+	"autoselect": true, // Whether the first panel should be selected
+	get current_class() {return "."+this.css_active_name;}, // Has to be outside selector object
+	"selector" : {
+		"slider":".marquee",
+		"nav": ".marquee-nav",
+		"panel":".marquee-panel",
+		"panels":".marquee-panels",
+		"viewport":".marquee-viewport"
+	}
 };
 
 /**
@@ -43,14 +56,14 @@ var global_marquee_settings = {
  
 
 $.fn.marqueeize = function(options) {
-	var settings = new cloneObject(global_marquee_settings);
+	settings = new cloneObject(global_marquee_settings);
 	// Makes this function watch the #hash on the browser URL bar
 	if ("onhashchange" in window) { $(window).bind("hashchange",function(){ activate_marquee_hashchange(); }); }
 
 	// Auto-initialize if a hash exists    
     if (window.location.hash) {
         var hash = window.location.hash;
-        var link = $('.marquee-nav li a[href="'+hash+'"]');
+        var link = $(settings.selector.nav).find('li a[href="'+hash+'"]');
         if (link.length == 1) {
             index = link.parent("li").index();
             link.parent("li").addClass(settings.css_active_name).siblings().removeClass(settings.css_active_name);
@@ -71,212 +84,52 @@ $.fn.marqueeize = function(options) {
 	        marquee.addClass("hasBeenMarqueed");
 	        
 	        if (options) { $.extend(settings,options); } // Merge provided options with defaults
-			if (marquee.hasClass("fixed")) { 
-				settings.resizable = false; 
-				// Add later -- ensure marquee is hieght of largest panel
-				// marquee.find(".marquee-viewport").css({"height":marquee.find(".marquee-panels").outerHeight()}); // Doesn't work
-			} else {
-				settings.resizable = true;
-			}
 
+			if (marquee.hasClass("fixed")) { settings.resizable = false; } 
 			if (marquee.hasClass("hover-activate")) { settings.hoverActivate = true; } else { settings.hoverActivate = false;}
 			if (marquee.hasClass("autosize")) { settings.autosize = true; } else { settings.autosize = false; }
 			if (marquee.hasClass("no-autoselect")) { settings.autoselect = false; } else { settings.autoselect = true; }
 			
-			if (marquee.attr("data-left-offset") == "center") {
-				// console.log(marquee.find('.marquee-panel').width());
-				// console.log($(window).width());
-				var new_offset = ($(window).width() - marquee.find('.marquee-panel').width())/2;
-				marquee.attr("data-left-offset",new_offset).addClass("leftOffsetCentered");
-				
-				var leftOffsetCentered_timeout;
-				$(window).on(settings.orientationevent,function(){
-					clearTimeout(leftOffsetCentered_timeout);
-					leftOffsetCentered_timeout = setTimeout(function(){
-						// Fix auto-centered marquees
-						var centers = $(".leftOffsetCentered");
-						$.each(centers,function(i,el){
-							el = $(el);
-							var new_offset = ($(window).width() - el.find('.marquee-panel').width())/2;
-							el.attr("data-left-offset",new_offset).addClass("leftOffsetCentered");
-							el.marqueeGoTo("current", null, settings);
-						});
+			setup_marquee_autocenter(marquee,settings);
+			setup_marquee_autosize(marquee,settings);
+			setup_marquee_controls(marquee,settings) 
+			setup_marquee_swiping(marquee,settings);
 
-					},200);
-				});
-
-			}
-		
-			/* Check autosize */
-			if (settings.autosize) {
-				// console.log(settings);
-				var new_width = marquee.width();
-				marquee.addClass("autosized").find(".marquee-panel,.marquee-viewport").width(new_width);
-
-				var adjust_me = true;
-				var timeout;
-
-				$(window).on(settings.orientationevent,function(){
-					var new_width = marquee.width();
-					marquee.find(".marquee-panel,.marquee-viewport").width(new_width).attr("data-width","yes");
-					clearTimeout(timeout);
-					timeout = setTimeout(function(){
-						// console.log("Fixing");
-						//var i = marquee.find(".current").index();
-						// console.log(i);
-						//force_refresh=true;
-						marquee.marqueeGoTo("current", null, settings);
-					},200);
-				});
-			}
-	    
-	        // Navigation elements
-	        marquee.find(".marquee-nav li").on("click",function(e){ e.preventDefault(); marquee.trigger("navClick"); $(this).marqueeClick();});
-	        if (settings.hoverActivate) { marquee.find(".marquee-nav li").on("mouseover",function(e){ e.preventDefault(); marquee.trigger("navHover"); $(this).marqueeClick();}); }
-	        marquee.find(".marquee_prev").first().on("click", function(e){ e.preventDefault();$(this).parents(".marquee").trigger("prev").first().marqueeGoTo("prev", null, settings);});
-	        marquee.find(".marquee_next").first().on("click", function(e){ e.preventDefault();$(this).parents(".marquee").trigger("next").first().marqueeGoTo("next", null, settings);});
-	        marquee.find(".marquee_first").first().on("click", function(e){ e.preventDefault();$(this).parents(".marquee").trigger("first").first().marqueeGoTo("first", null, settings);});
-	        marquee.find(".marquee_last").first().on("click", function(e){ e.preventDefault();$(this).parents(".marquee").trigger("last").first().marqueeGoTo("last", null, settings);});
-	        marquee.find(".marquee_random").first().on("click", function(e){ e.preventDefault();$(this).parents(".marquee").trigger("random").first().marqueeGoTo("random", null, settings);});
-	        marquee.find(".marquee_deselect").first().on("click", function(e){ e.preventDefault();$(this).parents(".marquee").trigger("deselect").removeClass("has-selection").find(".current").removeClass("current");});
-
-			// Touch event navigation
-			if (settings.enableTouch && !marquee.hasClass("clickToFocus")) {
-//			if (settings.enableTouch) {			
-		        marquee.on(settings.touchstartevent,function(e){
-
-		        	$(this).addClass("swiping");
-		        	var x_origin = e.clientX,
-			        	margin_origin = $(this).find(".marquee-panels").css("margin-left").replace("px","");
-
-					if (settings.touchstartevent == "mousedown") { e.preventDefault(); /* Prevents highlight or grabbing elements on desktop browsers */ }
-					var x = (e.pageX) ? e.pageX : e.originalEvent.changedTouches[0].pageX,
-						y = (e.pageY) ? e.pageY : e.originalEvent.changedTouches[0].pageY;
-					$(this).data({"start_x":x,"start_y":y});
-					
-					if (settings.touchMode == "drag") {
-						marquee.addClass("touch-event-occurring");
-						 marquee.on(settings.touchmoveevent, function(e){
-				        	e.preventDefault();
-				        	// To add -- support for touch screen
-				        	var x = (e.pageX) ? e.pageX : e.originalEvent.changedTouches[0].pageX;
-				        	var distance = x - parseInt(x_origin);
-				        	var	new_margin = parseInt(margin_origin) + parseInt(distance);
-				        	marquee.find(".marquee-panels").css("margin-left",new_margin);
-	
-				        });
-			        }
-		        });
-		        
-		        marquee.on(settings.touchendevent,function(e){	
-		        	marquee.off(settings.touchmoveevent);
-		        	setTimeout(function(){
-			        	marquee.removeClass("touch-event-occurring").removeClass("swiping");	
-		        	},1000);
-		        	
-					var marquee_moved = false; // Flag to ensure that movement occurs 
-		        
-		        	var x_swipe, y_swipe,
-		        		x = (e.pageX) ? e.pageX : e.originalEvent.changedTouches[0].pageX,
-						y = (e.pageY) ? e.pageY : e.originalEvent.changedTouches[0].pageY;
-
-					var x_change = $(this).data("start_x") - x,
-						y_change = $(this).data("start_y") - y;
-
-		        	if (x_change < 0) { x_swipe = "left"; }
-		        	else if (x_change > 0) { x_swipe = "right"; }
-		        	
-		        	if (y_change < 0) { y_swipe = "up"; }
-		        	else if (y_change > 0) { y_swipe = "down"; }
-					if (Math.abs(x_change) > Math.abs(y_change)) { // Ensures only swipes intended to be horizontal are registered
-	       				
-	       				if (Math.abs(x_change) > settings.swipeThreshold) {
-	       					// console.log("swipe registered");
-		       				marquee.trigger("swiped");
-		       				if (x_swipe == "left") { 
-		       					
-		       					if ($(this).find(".marquee-panel." + settings.css_active_name).index() != 0) { $(this).marqueeGoTo("prev", null, settings); marquee_moved = true; }
-		       					else { // Bounce effect on the beginning (first panel)
-		       						var orig = $(this).find(".marquee-panels").css("margin-left").replace("px","");
-		       						var bounce_this_far = 40;
-		       						if ($(this).attr("data-left-offset")) { bounce_this_far = bounce_this_far + $(this).attr("data-left-offset"); }
-		       						$(this).find(".marquee-panels").animate({"margin-left":(orig + bounce_this_far)}, 200).animate({"margin-left":(orig)}, 400, (jQuery.easing['easeOutBounce']) ? "easeOutBounce" : "swing"); marquee_moved = true; }
-		       				} else if (x_swipe == "right") { 
-		       					if ($(this).find(".marquee-panel." + settings.css_active_name).index() != (parseInt(marquee.find(".marquee-panel").length - 1))) { $(this).marqueeGoTo("next", null, settings); marquee_moved = true; }
-		       					else { // Bounce effect on the end (last panel)
-		       						var orig = $(this).find(".marquee-panels").css("margin-left").replace("px","");
-		       						$(this).find(".marquee-panels").animate({"margin-left":(orig - 40)}, 200).animate({"margin-left":(orig)}, 400, (jQuery.easing['easeOutBounce']) ? "easeOutBounce" : "swing"); marquee_moved = true; }
-		       				}		       				
-	       				} 
-					} else {
-						// Y change was greater than x change	
-					}
-
-       				$(this).data({"start_x":null,"end_x":null});
-       				
-       				// Auto-fix marquee if swipe wasn't enough to register
-       				if (marquee_moved == false && x_change > 0) {
-       					marquee.marqueeGoTo("current", null, settings);
-       				} 
-    				
- 	        	});
- 	        	
- 	        }
- 	        // End Touch Event Navigation
- 	        
-	    
-	        
-	        marquee.find(".marquee-nav .caption").hide(); // Hide all the captions in the list items so as to not break the lists/navigation
 	        
 	        marquee.each(function(){
 	            var marquee_instance = $(this),
 	            	index = 0;
 
-		        // Check whether the current CSS name is applied to a panel
-	            var current = marquee_instance.find(".marquee-nav").first().find("."+settings.css_active_name); // If the "current" class is on one of the panels, auto-select it
-	            if (current.length > 0) { // Go to the pre-selected "current" panel
-	                index = current.index();
-	            } else { // Go to the first panel
-	                /*var load_panel;
-	                if (window.location.hash) {
-	                    load_panel = true;
-	                }*/
-	            }
+		        // Determine if panel should not be first
+		            var current = marquee_instance.find(settings.selector.nav).first().find(settings.current_class); // If the settings.css_active_name class is on one of the panels, auto-select it
+		            if (current.length > 0) { // Go to the pre-selected settings.css_active_name panel
+		                index = current.index();
+		            }
 	            
-	            // Initialize the tabs
-	            if (index == 0) {
-	                marquee_instance.marqueeGoTo("initialize", null, settings); 
-	            } else {
-	                marquee_instance.marqueeGoTo(index, null, settings);    
-	            }
+	            // Activate this marquee
+		            if (index == 0) {
+		                marquee_instance.marqueeGoTo("initialize", null, settings); 
+		            } else {
+		                marquee_instance.marqueeGoTo(index, null, settings);    
+		            }
 	
-	            var total = marquee_instance.find(".marquee-panels").first().children(".marquee-panel").length; // Used by infinite rotation
-	            marquee_instance.attr("data-original-length", total);	// Used by infinite rotation
+		        // Setup infinite carousel
+		            var total = marquee_instance.find(settings.selector.panels).first().children(settings.selector.panel).length; // Used by infinite rotation
+		            marquee_instance.attr("data-original-length", total);	// Used by infinite rotation
 	            
-	            if (marquee_instance.find(".counter .total").length > 0) { marquee_instance.find(".counter .total").html(total);  } // Update the counter (1 of 6) if it exists
+		            		//if (marquee_instance.find(".counter .total").length > 0) { marquee_instance.find(".counter .total").html(total);  } // Update the counter (1 of 6) if it exists
+	            
+	            // Setup resizablility
+					if (settings.resizable) {
+						var panel_height = marquee_instance.find(settings.selector.panel).is(settings.css_active_name).clientHeight; // Get the height of this panel
+						marquee_instance.css({"height": panel_height+"px"}); 
+		            	marquee_instance.find(settings.selector.viewport).css({"height": panel_height+"px"});
+					}
 	        });         
 		}
     });
 }
 /** @end $.fn.marqueeize **/
-
-/** 
- * @function marqueeClick()
- *
- * Handles clicks on marquee elements
- *
-*** HTML Structure - Marquee Element ****
- ** .marquee
- *** .marquee-panels
- **** .marquee-panel
-*** HTML Structure - Nav Element ***
- ** .marquee-nav
- *** li 
- *
-*** CSS Notes ****
- ** Both the panel and the nav LI item will get ".current" when active
- *
- **/
  
 $.fn.marqueeClick = function(options) {
     var settings = new cloneObject(global_marquee_settings);
@@ -287,13 +140,13 @@ $.fn.marqueeClick = function(options) {
     
         // Let's get a lot of stats and elements
         var item = $(this),
-            marquee = $(this).parents(".marquee").first(), // The containing marquee
+            marquee = $(this).parents(settings.selector.slider).first(), // The containing marquee
             index = $(this).index(); // Figure out numeric value of element clicked
 
         item.addClass(settings.css_active_name);
         $(marquee).marqueeGoTo(index, null, settings);
-    }); // @end return
-} // @end $.fn.marqueeClick
+    }); 
+} 
 
 $.fn.marqueeAutoplay = function() {
 
@@ -306,33 +159,23 @@ $.fn.marqueeAutoplay = function() {
 	        function() {$.data(this,'hover',false); }
 	    ).data('hover',false).data('autoplay',true);
 	
-		marquee_instance.find(".marquee-nav").click(function() { marquee_instance.data('autoplay', false); }); // Stops autoplay on click of slide number
+		marquee_instance.find(settings.selector.nav).click(function() { marquee_instance.data('autoplay', false); }); // Stops autoplay on click of slide number
 
-        $(this).marqueeAutoplayEnable();    
-        // $(document.createElement("a")).appendTo(this).addClass("pause").html("pause");  
+        var this_autoplay = setInterval(function(){
+        if (!marquee_instance.data('hover') && marquee_instance.data('autoplay')) { marquee_instance.marqueeGoTo("next", null, settings); }
+    },global_marquee_settings.autoplay_slide_duration);
+    
+	    marquee_instance.removeClass("autoplay-off").addClass("autoplay-on").hover(
+	        function(){ clearInterval(this_autoplay); },
+	        function(){ 
+	            this_autoplay = setInterval(function(){
+	                if (!marquee_instance.data('hover') && marquee_instance.data('autoplay')) { marquee_instance.marqueeGoTo("next", null, settings); }
+	            },global_marquee_settings.autoplay_slide_duration);
+	        }
+	    );
     });
 }
 
-/**
- * Enables autoplay for a given element 
- **/ 
-$.fn.marqueeAutoplayEnable = function () {
-    var marquee = $(this);
-
-    // Set the autoplay 
-    var this_autoplay = setInterval(function(){
-        if (!marquee.data('hover') && marquee.data('autoplay')) { marquee.marqueeGoTo("next", null, settings); }
-    },global_marquee_settings.autoplay_slide_duration);
-    
-    marquee.hover(
-        function(){ clearInterval(this_autoplay); },
-        function(){ 
-            this_autoplay = setInterval(function(){
-                if (!marquee.data('hover') && marquee.data('autoplay')) { marquee.marqueeGoTo("next", null, settings); }
-            },global_marquee_settings.autoplay_slide_duration);
-        }
-    ).removeClass("autoplay-off").addClass("autoplay-on");
-}
 
 /**
  * Tells a marquee to go to a selected slide
@@ -354,8 +197,8 @@ $.fn.marqueeGoTo = function(index,force_panel,my_settings) {
     return this.each(function(){
         var marquee = $(this),
         	force_refresh = false,
-            current_index = marquee.find(".marquee-panels").first().children("."+settings.css_active_name).index(),
-            total_index = marquee.find(".marquee-panels").first().children(".marquee-panel").length - 1;
+            current_index = marquee.find(settings.selector.panels).first().children(settings.current_class).index(),
+            total_index = marquee.find(settings.selector.panels).first().children(settings.selector.panel).length - 1;
         if (current_index == -1) { current_index = 0; } // -1 is given when none exists
 
         // Parse the index value    
@@ -373,29 +216,20 @@ $.fn.marqueeGoTo = function(index,force_panel,my_settings) {
             	}
             break;
             
-            case "current":
-				
+            case settings.css_active_name:
             	index = current_index;
-//            	current_index = index-1;
             	force_refresh = true;
             break;
         
             case "next":
             	if (marquee.hasClass("multiple")) {
-	            	var fit = Math.floor(marquee.width() / marquee.find(".marquee-panel").width());
+	            	var fit = Math.floor(marquee.width() / marquee.find(settings.selector.panel).width());
 	            	index = parseInt(current_index + fit);	
 	            	
-	            	if (total_index-fit > index) {
-		            	// console.log(1);
-	            	} else {
-		            	// console.log(2);
+	            	if (total_index-fit <= index) {
 		            	index = total_index-fit+1;
-		            	// console.log(index);
 		            	marquee.addClass("current-page-last");
 	            	}
-	            	/*if (index > total_index) {
-		            	index = total_index - fit;
-	            	}*/
             	} else {
 	            	index = parseInt(current_index + 1);	
             	}
@@ -405,23 +239,17 @@ $.fn.marqueeGoTo = function(index,force_panel,my_settings) {
             case "prev":
             case "previous":
             	if (marquee.hasClass("multiple")) {
-	            	var fit = Math.floor(marquee.width() / marquee.find(".marquee-panel").width());
+	            	var fit = Math.floor(marquee.width() / marquee.find(settings.selector.panel).width());
 	            	index = parseInt(current_index - fit);	
 	            	if (index < 0) { index = 0;}
 	            	marquee.addClass("current-page-first");
             	} else {
 	            	index = parseInt(current_index - 1);	
             	}
-            	
             break;
             
-            case "last":
-                index = total_index;
-            break;
-            
-            case "first":
-                index = 0;
-            break;
+            case "first": index = 0; break;
+            case "last": index = total_index; break;
             
             case "random":
                 index = current_index; 
@@ -433,185 +261,86 @@ $.fn.marqueeGoTo = function(index,force_panel,my_settings) {
         
         if (index == null) { return false; }
         
-        
-        
         marquee.addClass("has-selection").removeClass("current-page-first current-page-last");
-	// Handles looping the marquee.
-        // If the "infinite" class is applied to the marquee, the LI elements will be cloned so that it appears the carousel always continues in one direction.
-        // However, this currently only goes forward -- if looping backward from the first, it will loop all the way back.
-        if (marquee.hasClass("infinite") == true) {
-            var panels_container = marquee.find(".marquee-panels").first(),
-            	panels = $(panels_container).children(".marquee-panel"),
-            	container_width = panels_container.width();
-            	
-            if (marquee.attr("data-infinite-buffer")) {
-	            var buffered_index = parseInt(marquee.attr("data-infinite-buffer")) + index;
-            } else {
-	            var buffered_index = index;
-            }
-            if (buffered_index == total_index || buffered_index > total_index) { // End, going to beginning // Change > to == on 5/4/12, builds infinite one ahead of when needed
-                panels.clone().appendTo(panels_container);
-                panels_container.width(container_width*2);
-                total_index = (total_index * 2) + 1;
-            }
-            
-            if (index < 0) { // beginning, going to end
-                index = total_index;
-              
-                panels.clone().prependTo(panels_container);
-                panels_container.width(container_width*2);
-                
-                total_index = (total_index * 2) + 1;
-                index = total_index;
-                var temp_hide_trans = true; // Because we don't want the user to see all the panels, hide the transition
-            } 
-        } else {
-            if (index < 0) { index = total_index;} // Fix values that are too low
-            if (index > total_index) { index = 0;} // Fix values that are too high
-        }
-        
-
-        
-    // Ends looping marquee
-    
-    // Actually make the move
+	
+		setup_marquee_infinite(marquee,settings,index,total_index);
+ 
     	if (force_panel != null) { index = force_panel; }
 
-//        if (current_index != index  || force_refresh) { // For some reason this slows down everything
 		if (current_index != index || force_refresh) { // Only do the transition if we want a different panel 
+			// Map necessary variables 
+            var container	= marquee.find(settings.selector.panels).first(), 			// UL - holds panels
+            	viewport	= marquee.find(settings.selector.viewport).first(), 		// Container's viewport
+            	nav			= marquee.find(settings.selector.nav).first(),				// Container's controls
+                margin		= container.css("margin-left").replace('px',''), 	// Container's left margin
+                panels 		= container.find(settings.selector.panel),					// All panels
+            	panel		= $(panels.get(index)),					 			// Current panel
+                panel_height= panel.outerHeight(), 								// Current panel's height
+                coordinates = panel.position(), 								// Current panel's coordinates
+                travelTo	= parseInt(coordinates.left,10) - parseInt(margin,10), // Left + inverse of margin
+                leftOffset = marquee.attr("data-left-offset");					
+                // leftOffset - An optional left offset used when 
+                // 				calculating margin-left for marquees that 
+                // 				are slightly off center with visible 
+                // 				exterior panels
 
-            var container = marquee.find(".marquee-panels").first(), // This element holds the panels
-            	viewport = marquee.find(".marquee-viewport").first(),
-            	nav = marquee.find(".marquee-nav").first(),
-            	panel = marquee.find(".marquee-panels").first().find(".marquee-panel:eq("+index+")"), // Get the panel that matches this numeric value
-                panel_height = panel.outerHeight(), // Get the height of this panel
-                coordinates = panel.position(), // Get the coordinates of this panel
-                margin = container.css("margin-left").replace('px',''), // Figure out the margin of the panel container
-                travelTo = parseInt(coordinates.left,10) - parseInt(margin,10), // Use left coordinate and inverse of margin for new coordinates
-                leftOffset = marquee.attr("data-left-offset"), // An optional left offset used when calculating margin-left for marquees that are slightly off center with visible exterior panels
-                text = $(settings.fade_text_selectors,marquee); // Grab text so we can fade it
 
-			if (leftOffset) { travelTo = travelTo - leftOffset;}
+    
+            // Update travelTo
+				if (leftOffset) { travelTo = travelTo - leftOffset;}
 
-            /* Fixing padding issue */
-            var padding_left = marquee.css("padding-left").replace('px','');
-            travelTo = parseInt(travelTo,10) - parseInt(padding_left,10);
+            // Fix padding
+	            var padding_left = marquee.css("padding-left").replace('px','');
+	            travelTo = parseInt(travelTo,10) - parseInt(padding_left,10);
             
-            // // console.log(travelTo);
-           
-            nav.find("."+settings.css_active_name).removeClass(settings.css_active_name); // Remove current from direct nav
-            nav.find("li:eq("+index+")").addClass(settings.css_active_name); // Give new current item the current class
-            
-            marquee.find(".marquee-panels").first().children("."+settings.css_active_name).removeClass(settings.css_active_name); // Remove current from direct nav            
-            panel.addClass(settings.css_active_name);  // Give new current panel the current class
-            marquee.removeClass("current-panel-"+ marquee.attr("data-current-panel")).attr("data-current-panel", (parseInt(index)+1)).addClass("current-panel-"+(parseInt(index)+1));
-            
-                        
-            if (index == 0) {
-            	marquee.addClass("current-panel-first").removeClass("current-panel-last").trigger("beginning");
-            } else if (index == total_index) {
-				marquee.addClass("current-panel-last").removeClass("current-panel-first").trigger("end");
-            } else {
-            	marquee.removeClass("current-panel-first current-panel-last");
-            }
+            // Update navigation
+	            nav.find(settings.current_class).removeClass(settings.css_active_name); // Remove current from direct nav
+	            nav.find("li:eq("+index+")").addClass(settings.css_active_name); // Give new current item the current class
 
-            
-            marquee.find(".counter .index").html(parseInt(index)+1); // Update a counter (1 of 6) if it exists
-            
-            // Update the marquee main text if it exists
-            if (marquee.find("."+settings.marquee_caption).length) {
-                var caption = $(nav).find("li:eq("+index+") .caption").html(); // Let's check for a .caption element
-                if (caption == null) {
-                    var caption = $(nav).find("li:eq("+index+")").attr("title"); // Let's check for a title attr on the LI
-                }
-                
-                if (caption) {
-                    $(marquee).find("."+settings.marquee_caption).fadeTo(500,1).html(caption); // Change the caption
-                } else {
-                    $(marquee).find("."+settings.marquee_caption).fadeTo(500,0); // Fade out the caption
-                }
-            }           
+	        // Update marquee classes & trigger event
+	        	if (index == 0) {
+	        		var trigger = "first";
+	        		var add_me = "current-panel-first";
+	        		var remove_me = "current-panel-last";
+	            } else if (index == total_index) {
+	            	var trigger = "last";
+	            	var add_me = "current-panel-last";
+	            	var remove_me = "current-panel-first";
+	            } else {
+	            	var remove_me = "current-panel-first current-panel-last";
+	            }
+	        
+	        	marquee
+	        		.removeClass(remove_me + " current-panel-"+ marquee.attr("data-current-panel"))
+	        		.attr("data-current-panel", (parseInt(index)+1))
+	        		.addClass(add_me + " current-panel-"+(parseInt(index)+1));
+	        	
+	        	if (trigger) { marquee.trigger(trigger); }
+	        	
+	        // Update panel classes
+	            container.children(settings.current_class).removeClass(settings.css_active_name); // Remove current from nav
+	            panel.addClass(settings.css_active_name);  // Give new current panel the current class
+
+            // Update child elements
+            	marqueeClick_update_caption(marquee,nav,settings,index);
+	            // marquee.find(".counter .index").html(parseInt(index)+1); // Update a counter (1 of 6) if it exists
 
 			// Make the transition
-			travelTo = travelTo * -1;
-
-            if ((settings.hide_transitions && current_index != -1) || temp_hide_trans == true) {
-           		// Do the transition instantly -- don't make it visible to user
-           		
-
-                var fadeable = marquee.find("h1,.summary");
-
-                if (fadeable.length > 0) {
-                	// Run this if there are fadeable inline elements
-	                fadeable.fadeTo(10,0, function(){
-	                    container.css({"margin-left": travelTo}, 1000, "swing", function(){
-	                        fadeable.fadeTo(100,1);
-                        	if (settings.resizable == true) { 
-			                	viewport.css({"height": panel_height+"px"}); 
-			                	container.css({"height": panel_height+"px"});
-			                }
-	                    });
-	                });                 
-                } else {
-                    container.css({"margin-left": travelTo}, 1000, "swing", function(){
-                        fadeable.fadeTo(10,1);
-                       	// Run this if there are not fadeable inline elements
-						if (settings.resizable == true) { 
-		                	viewport.css({"height": panel_height+"px"}); 
-		                	container.css({"height": panel_height+"px"});
-		                }
-                    });
-                }
-            } else {
-			// Do the transition visibly            
-                if (settings.fade_text) { text.fadeTo(400,.1); } // Fade out the text
-                if ($(marquee).hasClass("fast") == true) { settings.transition_speed = 1;} 
-                
-				container.animate({"margin-left": travelTo}, settings.transition_speed, "swing", function () {
-					if (settings.resizable == true && panel_height != viewport.height()) { 
-	                	/* Comment out if IE can't animate correctly */
-		                	viewport.animate({"height": panel_height+"px"}, (settings.transition_speed/2)); 
-		                	container.animate({"height": panel_height+"px"}, (settings.transition_speed/2));
-	                	/* Uncomment if IE can't animate correctly */
-	                	/*
-		                	viewport.css({"height": panel_height+"px"}); 
-		                	container.css({"height": panel_height+"px"});
-	                	*/
-	                }
-				});
-            }
-        	
-        	var original_length = $(marquee).attr("data-original-length");
-	        if (original_length != null) { // Accounts for cloning panels (seamless sliding) SM
-	            $("#current_slide").text((index % original_length + 1) + "/" + original_length); // changes label for current slide (ie, "1 of 3") 
-	        } else {
-	            $("#current_slide").text((index+1) + "/" + (total_index+1)); // changes label for current slide (ie, "1 of 3") 
-	        }
-	        
-	        if (fix_height == true) {
-	        	if (settings.hide_transitions) {
-		        	viewport.css({"height": panel_height+"px"}); 
-		        	container.css({"height": panel_height+"px"});        	
-	        	} else {
-		            viewport.animate({"height": panel_height+"px"}, (settings.transition_speed/2)); 
-			    	container.animate({"height": panel_height+"px"}, (settings.transition_speed/2));
-	        	
-	        	}
-	        }
-	        /* Update links on page if they link to this panel */
-	        if (nav) {
-	        	update_current_hashlinks(nav.find(".current a").attr("href"));
-	        }
+				travelTo = travelTo * -1;
+	
+	            if ((settings.hide_transitions && current_index != -1) || temp_hide_trans == true) {
+	            	var transitionSpeed = 1;
+	            } else {
+	            	var transitionSpeed = settings.transition_speed
+	            }
+	            
+	            marquee_move_margin_left_to_here(travelTo,container,settings,panel_height,transitionSpeed,viewport);
+        		        
+	        if (fix_height) { fix_marquee_height(viewport,container,settings,panel_height); }
+	        if (nav) { update_current_hashlinks(nav.find(settings.current_class).find("a").attr("href")); } // Update onpage links that link here
 	        
 	        setTimeout(function(){ marquee.trigger("newPanel"); },300);
-	        
-
-	        
-	        
-        
         }
-        
-        
     });
 }
 
@@ -622,14 +351,13 @@ $.fn.marqueeGoTo = function(index,force_panel,my_settings) {
 
 function activate_marquee_hashchange() {
     var new_hash = window.location.hash;
-    var link = $('.marquee-nav li a[href*="'+new_hash+'"]');
+    var link = $(settings.selector.nav).find('li a[href*="'+new_hash+'"]');
 
     $("._autoCurrentHash").removeClass("_autoCurrentHash");
     $.each(link,function(){
-//        $('a[href*="'+new_hash+'"]').not('.marquee-nav li a[href*="'+new_hash+'"]').addClass("_autoCurrentHash"); // Since these links already give themselves a current class
         var link_instance = $(this),
             new_index = link_instance.parent("li").index(),
-            hash_change_instance = link_instance.parents(".marquee").first();
+            hash_change_instance = link_instance.parents(settings.selector.slider).first();
         hash_change_instance.trigger("hashUpdate").marqueeGoTo(new_index);
     });
     update_current_hashlinks(new_hash);
@@ -638,7 +366,7 @@ function activate_marquee_hashchange() {
 function update_current_hashlinks(hash) {
     $("._autoCurrentHash").removeClass("_autoCurrentHash");
 	if (hash != "" && hash != "#") {
-	    $('a[href*="'+hash+'"]').not('.marquee-nav li a[href*="'+hash+'"]').addClass("_autoCurrentHash"); // Since these links already give themselves a current class
+	    $('a[href*="'+hash+'"]').not(settings.selector.nav+' li a[href*="'+hash+'"]').addClass("_autoCurrentHash"); // Since these links already give themselves a current class
 	}
 }
 
@@ -648,15 +376,18 @@ function update_current_hashlinks(hash) {
 ////////////////////
 $(function(){
 	/* Place your calls to specific marquees here if they need custom options. It MUST come before the next set of declarations. */
-		    
+		
     /* The following assign all 'normal' marquees. If you're not providing custom options that overwrite the default settings, these alone will be fine. */
-    if ($(".marquee.fade").length > 0 ) { $(".marquee.fade").not(".custom").marqueeize({"hide_transitions":true}); } // Each marqueeize binds new event, fix this. 
-    if ($(".marquee:not(.fade),.marquee.slide").length > 0 ) {$(".marquee:not(.fade),.marquee.slide").not(".custom").marqueeize(); }
-    if ($(".marquee.autoplay").length > 0) { 
-        $(".marquee.autoplay").marqueeAutoplay(); 
+    if ($(global_marquee_settings.selector.slider).is(".fade").length > 0 ) { $(global_marquee_settings.selector.slider).is(".fade").not(".custom").marqueeize({"hide_transitions":true}); } // Each marqueeize binds new event, fix this. 
+    if ($(".marquee:not(.fade),.marquee.slide").length > 0 ) {
+		//console.log($(".marquee:not(.fade),.marquee.slide"));
+    	$(".marquee:not(.fade),.marquee.slide").not(".custom").marqueeize(); 
+    }
+    if ($(global_marquee_settings.selector.slider).is(".autoplay").length > 0) { 
+        $(global_marquee_settings.selector.slider).is(".autoplay").marqueeAutoplay(); 
         // Controls the autoplay functionality for a specific marquee
         $(".autoplay .pause").click(function(){
-            var marquee = $(this).parents(".marquee").first(),
+            var marquee = $(this).parents(global_marquee_settings.selector.slider).first(),
                 autoplay = marquee.data("autoplay");
             if (autoplay) {
                 $(this).html("play");
@@ -675,18 +406,18 @@ $(function(){
 	// Ancillary functions
 	
 	// Make some marquee panels clickable in special cases
-	$(".clickToFocus .marquee-panel").on("click",function(){
-		if (!$(this).closest(".marquee").hasClass("swiping") && !$(this).hasClass("current")) {
-			$(this).closest(".marquee").trigger("clickToFocus").marqueeGoTo($(this).index());
+	$(".clickToFocus").find(settings.selector.panel).on("click",function(){
+		if (!$(this).closest(settings.selector.slider).hasClass("swiping") && !$(this).hasClass(settings.css_active_name)) {
+			$(this).closest(settings.selector.slider).trigger("clickToFocus").marqueeGoTo($(this).index());
 		} else {
 			// console.log("prevented");
 		}
 	});
 
 	// Prevents these marquees from activating links when clicking panels	
-	$(".clickToFocus .marquee-panel a").on("click",function(e){
-		if (!$(this).closest(".marquee-panel").is(".current")) {
-			$(this).closest(".marquee").marqueeGoTo($(this).closest(".marquee-panel").index());
+	$(".clickToFocus").find(settings.selector.panel).find("a").on("click",function(e){
+		if (!$(this).closest(settings.selector.panel).is(settings.current_class)) {
+			$(this).closest(settings.selector.slider).marqueeGoTo($(this).closest(settings.selector.panel).index());
 			return false;
 		} 
 	});
@@ -706,7 +437,7 @@ $(function(){
  * Dual licensed under the MIT and GPL licenses.
  * http://benalman.com/about/license/
  */
-(function($,e,b){var c="hashchange",h=document,f,g=$.event.special,i=h.documentMode,d="on"+c in e&&(i===b||i>7);function a(j){j=j||location.href;return"#"+j.replace(/^[^#]*#?(.*)$/,"$1")}$.fn[c]=function(j){return j?this.bind(c,j):this.trigger(c)};$.fn[c].delay=50;g[c]=$.extend(g[c],{setup:function(){if(d){return false}$(f.start)},teardown:function(){if(d){return false}$(f.stop)}});f=(function(){var j={},p,m=a(),k=function(q){return q},l=k,o=k;j.start=function(){p||n()};j.stop=function(){p&&clearTimeout(p);p=b};function n(){var r=a(),q=o(m);if(r!==m){l(m=r,q);$(e).trigger(c)}else{if(q!==m){location.href=location.href.replace(/#.*/,"")+q}}p=setTimeout(n,$.fn[c].delay)}$.browser.msie&&!d&&(function(){var q,r;j.start=function(){if(!q){r=$.fn[c].src;r=r&&r+a();q=$('<iframe tabindex="-1" title="empty"/>').hide().one("load",function(){r||l(a());n()}).attr("src",r||"javascript:0").insertAfter("body")[0].contentWindow;h.onpropertychange=function(){try{if(event.propertyName==="title"){q.document.title=h.title}}catch(s){}}}};j.stop=k;o=function(){return a(q.location.href)};l=function(v,s){var u=q.document,t=$.fn[c].domain;if(v!==s){u.title=h.title;u.open();t&&u.write('<script>document.domain="'+t+'"<\/script>');u.close();q.location.hash=v}}})();return j})()})(jQuery,this);
+//(function($,e,b){var c="hashchange",h=document,f,g=$.event.special,i=h.documentMode,d="on"+c in e&&(i===b||i>7);function a(j){j=j||location.href;return"#"+j.replace(/^[^#]*#?(.*)$/,"$1")}$.fn[c]=function(j){return j?this.bind(c,j):this.trigger(c)};$.fn[c].delay=50;g[c]=$.extend(g[c],{setup:function(){if(d){return false}$(f.start)},teardown:function(){if(d){return false}$(f.stop)}});f=(function(){var j={},p,m=a(),k=function(q){return q},l=k,o=k;j.start=function(){p||n()};j.stop=function(){p&&clearTimeout(p);p=b};function n(){var r=a(),q=o(m);if(r!==m){l(m=r,q);$(e).trigger(c)}else{if(q!==m){location.href=location.href.replace(/#.*/,"")+q}}p=setTimeout(n,$.fn[c].delay)}$.browser.msie&&!d&&(function(){var q,r;j.start=function(){if(!q){r=$.fn[c].src;r=r&&r+a();q=$('<iframe tabindex="-1" title="empty"/>').hide().one("load",function(){r||l(a());n()}).attr("src",r||"javascript:0").insertAfter("body")[0].contentWindow;h.onpropertychange=function(){try{if(event.propertyName==="title"){q.document.title=h.title}}catch(s){}}}};j.stop=k;o=function(){return a(q.location.href)};l=function(v,s){var u=q.document,t=$.fn[c].domain;if(v!==s){u.title=h.title;u.open();t&&u.write('<script>document.domain="'+t+'"<\/script>');u.close();q.location.hash=v}}})();return j})()})(jQuery,this);
 
 /* Object clone to clone properties of an object rather than just a reference*/
 function cloneObject(source) {
@@ -727,6 +458,9 @@ function cloneObject(source) {
 ////////////////
 
 /**
+ * 0.7.3 
+ * - Lots of cleanup and reorganization in preparation for rewrite.  Last update for Marquee.js!  Check out instead https://github.com/Skotlake/Svider.js
+ *
  * 0.7.2 
  * - Updated for jQuery 1.9
  * - Fixes an error where autosize was applied to all marquees
@@ -858,3 +592,223 @@ function cloneObject(source) {
  *
  *
  **/
+ 
+ 
+function setup_marquee_autocenter(marquee,settings) {
+	if (marquee.attr("data-left-offset") == "center") {
+		var new_offset = ($(window).width() - marquee.find(settings.selector.panel).width())/2;
+		marquee.attr("data-left-offset",new_offset).addClass("leftOffsetCentered");
+		
+		var leftOffsetCentered_timeout;
+		$(window).on(settings.orientationevent,function(){
+			clearTimeout(leftOffsetCentered_timeout);
+			leftOffsetCentered_timeout = setTimeout(function(){
+				// Fix auto-centered marquees
+				var centers = $(".leftOffsetCentered");
+				$.each(centers,function(i,el){
+					el = $(el);
+					var new_offset = ($(window).width() - el.find(settings.selector.panel).width())/2;
+					el.attr("data-left-offset",new_offset).addClass("leftOffsetCentered");
+					el.marqueeGoTo(settings.css_active_name, null, settings);
+				});
+
+			},200);
+		});
+
+	}
+}
+
+
+function setup_marquee_autosize(marquee,settings) {
+	if (settings.autosize) {
+		// console.log(settings);
+		var new_width = marquee.width();
+		marquee.addClass("autosized").find(settings.selector.panel).add(settings.selector.viewport,marquee).width(new_width);
+
+		var timeout;
+
+		$(window).on(settings.orientationevent,function(){
+			var new_width = marquee.width();
+			marquee.find(settings.selector.panel).add(settings.selector.viewport,marquee).width(new_width).attr("data-width","yes");
+			clearTimeout(timeout);
+			timeout = setTimeout(function(){
+				// console.log("Fixing");
+				//var i = marquee.find(settings.current_class).index();
+				// console.log(i);
+				//force_refresh=true;
+				marquee.marqueeGoTo(settings.css_active_name, null, settings);
+			},200);
+		});
+	}
+}
+
+function setup_marquee_controls(marquee,settings) {
+	marquee.find(settings.selector.nav).find("li").on("click",function(e){ e.preventDefault(); marquee.trigger("navClick"); $(this).marqueeClick();});
+    if (settings.hoverActivate) { marquee.find(settings.selector.nav).find("li").on("mouseover",function(e){ e.preventDefault(); marquee.trigger("navHover"); $(this).marqueeClick();}); }
+    marquee.find(".marquee_prev").first().on("click", function(e){ e.preventDefault();$(this).parents(settings.selector.slider).trigger("prev").first().marqueeGoTo("prev", null, settings);});
+    marquee.find(".marquee_next").first().on("click", function(e){ e.preventDefault();$(this).parents(settings.selector.slider).trigger("next").first().marqueeGoTo("next", null, settings);});
+    marquee.find(".marquee_first").first().on("click", function(e){ e.preventDefault();$(this).parents(settings.selector.slider).trigger("first").first().marqueeGoTo("first", null, settings);});
+    marquee.find(".marquee_last").first().on("click", function(e){ e.preventDefault();$(this).parents(settings.selector.slider).trigger("last").first().marqueeGoTo("last", null, settings);});
+    marquee.find(".marquee_random").first().on("click", function(e){ e.preventDefault();$(this).parents(settings.selector.slider).trigger("random").first().marqueeGoTo("random", null, settings);});
+    marquee.find(".marquee_deselect").first().on("click", function(e){ e.preventDefault();$(this).parents(settings.selector.slider).trigger("deselect").removeClass("has-selection").find(settings.current_class).removeClass(settings.css_active_name);});
+}
+
+
+function setup_marquee_swiping(marquee,settings) {
+	if (settings.enableTouch && !marquee.hasClass("clickToFocus")) {
+//			if (settings.enableTouch) {			
+        marquee.on(settings.touchstartevent,function(e){
+
+        	$(this).addClass("swiping");
+        	var x_origin = e.clientX,
+	        	margin_origin = $(this).find(settings.selector.panels).css("margin-left").replace("px","");
+
+			if (settings.touchstartevent == "mousedown") { e.preventDefault(); /* Prevents highlight or grabbing elements on desktop browsers */ }
+			var x = (e.pageX) ? e.pageX : e.originalEvent.changedTouches[0].pageX,
+				y = (e.pageY) ? e.pageY : e.originalEvent.changedTouches[0].pageY;
+			$(this).data({"start_x":x,"start_y":y});
+			
+			if (settings.touchMode == "drag") {
+				marquee.addClass("touch-event-occurring");
+				 marquee.on(settings.touchmoveevent, function(e){
+		        	e.preventDefault();
+		        	// To add -- support for touch screen
+		        	var x = (e.pageX) ? e.pageX : e.originalEvent.changedTouches[0].pageX;
+		        	var distance = x - parseInt(x_origin);
+		        	var	new_margin = parseInt(margin_origin) + parseInt(distance);
+		        	marquee.find(settings.selector.panels).css("margin-left",new_margin);
+
+		        });
+	        }
+        });
+        
+        marquee.on(settings.touchendevent,function(e){	
+        	marquee.off(settings.touchmoveevent);
+        	setTimeout(function(){
+	        	marquee.removeClass("touch-event-occurring").removeClass("swiping");	
+        	},1000);
+        	
+			var marquee_moved = false; // Flag to ensure that movement occurs 
+        
+        	var x_swipe, y_swipe,
+        		x = (e.pageX) ? e.pageX : e.originalEvent.changedTouches[0].pageX,
+				y = (e.pageY) ? e.pageY : e.originalEvent.changedTouches[0].pageY;
+
+			var x_change = $(this).data("start_x") - x,
+				y_change = $(this).data("start_y") - y;
+
+        	if (x_change < 0) { x_swipe = "left"; }
+        	else if (x_change > 0) { x_swipe = "right"; }
+        	
+        	if (y_change < 0) { y_swipe = "up"; }
+        	else if (y_change > 0) { y_swipe = "down"; }
+			if (Math.abs(x_change) > Math.abs(y_change)) { // Ensures only swipes intended to be horizontal are registered
+   				
+   				if (Math.abs(x_change) > settings.swipeThreshold) {
+   					// console.log("swipe registered");
+       				marquee.trigger("swiped");
+       				if (x_swipe == "left") { 
+       					
+       					if ($(this).find(settings.selector.panel).is(settings.current_class).index() != 0) { $(this).marqueeGoTo("prev", null, settings); marquee_moved = true; }
+       					else { // Bounce effect on the beginning (first panel)
+       						var orig = $(this).find(settings.selector.panels).css("margin-left").replace("px","");
+       						var bounce_this_far = 40;
+       						if ($(this).attr("data-left-offset")) { bounce_this_far = bounce_this_far + $(this).attr("data-left-offset"); }
+       						$(this).find(settings.selector.panels).animate({"margin-left":(orig + bounce_this_far)}, 200).animate({"margin-left":(orig)}, 400, (jQuery.easing['easeOutBounce']) ? "easeOutBounce" : "swing"); marquee_moved = true; }
+       				} else if (x_swipe == "right") { 
+       					if ($(this).find(settings.selector.panel).find(settings.current_class).index() != (parseInt(marquee.find(settings.selector.panel).length - 1))) { $(this).marqueeGoTo("next", null, settings); marquee_moved = true; }
+       					else { // Bounce effect on the end (last panel)
+       						var orig = $(this).find(settings.selector.panels).css("margin-left").replace("px","");
+       						$(this).find(settings.selector.panels).animate({"margin-left":(orig - 40)}, 200).animate({"margin-left":(orig)}, 400, (jQuery.easing['easeOutBounce']) ? "easeOutBounce" : "swing"); marquee_moved = true; }
+       				}		       				
+   				} 
+			} else {
+				// Y change was greater than x change	
+			}
+
+				$(this).data({"start_x":null,"end_x":null});
+				
+				// Auto-fix marquee if swipe wasn't enough to register
+				if (marquee_moved == false && x_change > 0) {
+					marquee.marqueeGoTo(settings.css_active_name, null, settings);
+				} 
+			
+        	});
+        	
+        }
+}
+
+
+
+function fix_marquee_height(viewport,container,settings,panel_height) {
+	if (settings.hide_transitions) {
+    	viewport.css({"height": panel_height+"px"}); 
+    	container.css({"height": panel_height+"px"});        	
+	} else {
+        viewport.animate({"height": panel_height+"px"}, (settings.transition_speed/2)); 
+    	container.animate({"height": panel_height+"px"}, (settings.transition_speed/2));
+	}
+}
+
+function marquee_move_margin_left_to_here(travelTo,container,settings,panel_height,speed,viewport) {
+
+	container.animate({"margin-left": travelTo}, speed, "swing", function () {
+		if (settings.resizable == true && panel_height) {
+			container.animate({"height": panel_height+"px"}, (speed/2));
+			if (viewport != undefined) {
+				viewport.animate({"height": panel_height+"px"}, (speed/2)); 
+			}
+		}
+	});
+
+
+}
+
+
+function marqueeClick_update_caption(marquee,nav,settings,index) {
+	            if (marquee.find("."+settings.marquee_caption).length) {
+	                var caption = $(nav).find("li:eq("+index+") .caption").html(); // Let's check for a .caption element
+	                if (caption == null) {
+	                    var caption = $(nav).find("li:eq("+index+")").attr("title"); // Let's check for a title attr on the LI
+	                }
+	                
+	                if (caption) {
+	                    $(marquee).find("."+settings.marquee_caption).fadeTo(500,1).html(caption); // Change the caption
+	                } else {
+	                    $(marquee).find("."+settings.marquee_caption).fadeTo(500,0); // Fade out the caption
+	                }
+	            } 
+            }
+            
+            
+function setup_marquee_infinite(marquee,settings,index,total_index) {
+			// If the "infinite" class is applied to the marquee, the LI elements will be cloned so that it appears the carousel always continues in one direction.
+	        // However, this currently only goes forward -- if looping backward from the first, it will loop all the way back.
+	        if (marquee.hasClass("infinite") == true) {
+	            var panels_container = marquee.find(settings.selector.panels).first(),
+	            	panels = $(panels_container).children(settings.selector.panel),
+	            	container_width = panels_container.width();
+	            	
+	            if (marquee.attr("data-infinite-buffer")) {
+		            var buffered_index = parseInt(marquee.attr("data-infinite-buffer")) + index;
+	            } else {
+		            var buffered_index = index;
+	            }
+	            if (buffered_index == total_index || buffered_index > total_index) { // End, going to beginning // Change > to == on 5/4/12, builds infinite one ahead of when needed
+	                panels.clone().appendTo(panels_container);
+	                panels_container.width(container_width*2);
+	                total_index = (total_index * 2) + 1;
+	            }
+	            
+	            if (index < 0) { // beginning, going to end
+	                index = total_index;
+	              
+	                panels.clone().prependTo(panels_container);
+	                panels_container.width(container_width*2);
+	                
+	                total_index = (total_index * 2) + 1;
+	                index = total_index;
+	                var temp_hide_trans = true; // Because we don't want the user to see all the panels, hide the transition
+	            } 
+	        } 
+		}
